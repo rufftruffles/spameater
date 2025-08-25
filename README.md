@@ -233,7 +233,6 @@ MIT License - see [LICENSE](LICENSE) file
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/rufftruffles/spameater/issues)
-- **Wiki**: [Documentation](https://github.com/rufftruffles/spameater/wiki)
 - **Security**: Report vulnerabilities via GitHub Security
 
 ---
