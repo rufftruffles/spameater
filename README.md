@@ -1,6 +1,6 @@
 <div align="center">
   <h1>🍽️</h1>
-  <h1>SpamEater</h1>
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=40&pause=1000000&color=FF6B35&center=true&vCenter=true&width=435&lines=SpamEater" alt="SpamEater" />
   <p><strong>Temporary Email Service with Auto-Deletion</strong></p>
   <p>
     <img src="https://img.shields.io/badge/Security-ModSecurity%20WAF-ff6b35?style=for-the-badge&labelColor=0a0a0a" alt="Security">
@@ -223,7 +223,7 @@ NODE_ENV=production
 
 1. Fork the repository
 2. Create your feature branch
-3. Test your changes
+3. Commit your changes
 4. Submit a pull request
 
 ## License
