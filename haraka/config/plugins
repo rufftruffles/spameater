@@ -1,0 +1,14 @@
+# Authentication plugins
+spf
+dkim
+
+# Rate limiting - MUST come before rcpt_to plugins
+rate_limit_inbox
+
+# Core plugins
+headers
+rcpt_to.in_host_list
+queue/discard
+
+# Custom plugin - must be last
+save_email

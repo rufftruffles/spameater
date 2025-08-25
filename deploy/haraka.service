@@ -1,0 +1,28 @@
+[Unit]
+Description=SpamEater SMTP Server (Haraka)
+After=network.target
+
+[Service]
+Type=simple
+User=spameater
+Group=spameater
+WorkingDirectory=/opt/spameater/haraka
+Environment="NODE_ENV=production"
+EnvironmentFile=/opt/spameater/.env
+ExecStart=/usr/bin/haraka -c /opt/spameater/haraka
+Restart=always
+RestartSec=10
+
+# Security settings
+PrivateTmp=true
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/spameater
+
+# Network capabilities
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
