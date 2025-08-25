@@ -154,6 +154,11 @@ systemctl status nginx
 # View logs
 journalctl -u haraka -f
 journalctl -u spameater-api -f
+tail -f /var/log/nginx/access.log
+
+# Security logs
+tail -f /opt/spameater/logs/modsec_audit.log
+tail -f /opt/spameater/logs/security.log
 ```
 
 ### Uninstall
