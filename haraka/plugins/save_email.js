@@ -512,34 +512,55 @@ exports.hook_data_post = function(next, connection) {
             }
         }
         
-        // Parse email body
+        // Parse email body - FIXED LOGIC
         let bodyText = '';
         let bodyHtml = '';
         
         if (transaction.body) {
+            // First check if the main body has content
             if (transaction.body.bodytext) {
-                bodyText = transaction.body.bodytext;
+                const mainBodyText = transaction.body.bodytext;
+                // Check if it's HTML by looking for HTML tags
+                if (/<html|<!DOCTYPE/i.test(mainBodyText)) {
+                    bodyHtml = mainBodyText;
+                } else {
+                    bodyText = mainBodyText;
+                }
             }
             
-            if (transaction.body.children) {
+            // Then check children for multipart messages
+            if (transaction.body.children && transaction.body.children.length > 0) {
                 for (let i = 0; i < transaction.body.children.length; i++) {
                     const child = transaction.body.children[i];
                     if (child.bodytext) {
                         const ct = child.header.get('content-type') || '';
                         if (/text\/plain/i.test(ct)) {
-                            bodyText = child.bodytext;
+                            // Only set plain text if we don't already have it
+                            if (!bodyText || bodyText.trim() === '') {
+                                bodyText = child.bodytext;
+                            }
                         } else if (/text\/html/i.test(ct)) {
-                            bodyHtml = child.bodytext;
+                            // Only set HTML if we don't already have it
+                            if (!bodyHtml || bodyHtml.trim() === '') {
+                                bodyHtml = child.bodytext;
+                            }
                         }
                     }
                 }
             }
         }
         
+        // Fallback to body_lines if nothing found
         if (!bodyText && !bodyHtml) {
             const body_lines = transaction.body_lines;
             if (body_lines && body_lines.length > 0) {
-                bodyText = body_lines.join('\n');
+                const joinedBody = body_lines.join('\n');
+                // Check if it's HTML
+                if (/<html|<!DOCTYPE/i.test(joinedBody)) {
+                    bodyHtml = joinedBody;
+                } else {
+                    bodyText = joinedBody;
+                }
             }
         }
         
@@ -569,7 +590,7 @@ exports.hook_data_post = function(next, connection) {
             /\blimited time offer\b/i
         ];
         
-        const combinedText = subject + ' ' + bodyText;
+        const combinedText = subject + ' ' + bodyText + ' ' + bodyHtml;
         let spamScore = 0;
         
         for (const pattern of suspiciousPatterns) {
