@@ -11,11 +11,15 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
 
 ## Screenshots
 
-![SpamEater Landing Page](screenshots/1.png)
-*Create temporary email addresses instantly with SpamEater's clean interface*
-
-![SpamEater Inbox View](screenshots/2.png)
-*Active inbox ready to receive and display emails in real-time*
+<div align="center">
+  <img src="screenshots/1.png" alt="SpamEater Landing Page" width="600">
+  <br>
+  <em>Create temporary email addresses instantly with SpamEater's clean interface</em>
+  <br><br>
+  <img src="screenshots/2.png" alt="SpamEater Inbox View" width="600">
+  <br>
+  <em>Active inbox ready to receive and display emails in real-time</em>
+</div>
 
 ## Features
 
