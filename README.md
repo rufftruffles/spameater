@@ -11,6 +11,9 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
 
 ## Screenshots
 
+<details>
+<summary><b>Click to view screenshots</b></summary>
+<br>
 <div align="center">
   <img src="screenshots/1.png" alt="SpamEater Landing Page" width="600">
   <br>
@@ -20,6 +23,7 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
   <br>
   <em>Active inbox ready to receive and display emails in real-time</em>
 </div>
+</details>
 
 ## Features
 
