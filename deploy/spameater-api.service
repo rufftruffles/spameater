@@ -1,0 +1,23 @@
+[Unit]
+Description=SpamEater API Server
+After=network.target
+
+[Service]
+Type=simple
+User=spameater
+WorkingDirectory=/opt/spameater
+Environment="NODE_ENV=production"
+EnvironmentFile=/opt/spameater/.env
+ExecStart=/usr/bin/node /opt/spameater/api-server.js
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/spameater/data
+
+[Install]
+WantedBy=multi-user.target

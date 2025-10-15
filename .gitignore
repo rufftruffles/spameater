@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Data directory
+data/
+*.db
+*.json
+
+# Logs
+logs/
+*.log
+
+# Node modules (if any local)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+.DS_Store
+
+# Backup files
+*.backup
+*.bak
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# System files
+Thumbs.db
+
+# Docker runtime directories
+docker/data/
+docker/logs/
+docker/backups/
+docker/.env
+docker/*.env.local
+docker/*.env.production
+docker/build.log

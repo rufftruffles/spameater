@@ -1,0 +1,41 @@
+# Docker build exclusions
+.env
+*.env.local
+*.env.production
+
+# Data and logs (use volumes instead)
+data/
+logs/
+backups/
+*.db
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+
+# Development files
+.DS_Store
+*.swp
+*.tmp
+*.bak
+*.backup
+
+# Node modules (will be installed fresh)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# SSL certificates (will be generated)
+*.pem
+*.key
+*.crt
+
+# System files
+Thumbs.db
+.vscode/
+.idea/

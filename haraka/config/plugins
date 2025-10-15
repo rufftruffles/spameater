@@ -1,0 +1,18 @@
+# SpamEater Haraka Plugins Configuration
+# Order matters - plugins are loaded sequentially
+
+# Core plugins
+access
+helo.checks
+mail_from.is_resolvable
+rcpt_to.in_host_list
+data.headers
+spf
+dkim_verify
+
+# SpamEater custom plugins
+rate_limit_inbox
+save_email
+
+# Queue plugin must be last
+queue/discard

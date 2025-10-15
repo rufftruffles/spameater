@@ -1,0 +1,86 @@
+services:
+  spameater:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    # Or use pre-built image (when available):
+    # image: ghcr.io/rufftruffles/spameater:latest
+    
+    container_name: spameater
+    hostname: ${EMAIL_DOMAIN:-spameater}
+    
+    # Required for fail2ban to work properly
+    privileged: true
+    
+    ports:
+      - "25:25"      # SMTP
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+    
+    volumes:
+      # Persistent data storage
+      - spameater_data:/opt/spameater/data
+      - spameater_logs:/opt/spameater/logs  
+      - letsencrypt_certs:/etc/letsencrypt
+      
+      # Optional: Custom configuration overrides
+      # - ./custom-nginx.conf:/etc/nginx/conf.d/custom.conf:ro
+      # - ./custom-haraka-plugins:/opt/spameater/haraka/plugins:ro
+      
+    environment:
+      # Required
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      
+      # Optional - defaults to EMAIL_DOMAIN
+      - WEB_DOMAIN=${WEB_DOMAIN:-${EMAIL_DOMAIN}}
+      
+      # Optional - auto-generated if not provided
+      - DELETE_TOKEN_SECRET=${DELETE_TOKEN_SECRET:-}
+      - CSRF_SECRET=${CSRF_SECRET:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      
+      # Optional - email for Let's Encrypt
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      
+      # Optional - disable SSL for development (default: false)
+      - DISABLE_SSL=${DISABLE_SSL:-false}
+      
+      # Optional - disable automatic SSL generation (default: true)
+      - AUTO_SSL=${AUTO_SSL:-true}
+    
+    restart: unless-stopped
+    
+    networks:
+      - spameater_network
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  spameater_data:
+    driver: local
+      
+  spameater_logs:
+    driver: local
+      
+  letsencrypt_certs:
+    driver: local
+
+networks:
+  spameater_network:
+    driver: bridge

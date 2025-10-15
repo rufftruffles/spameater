@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpamEater - Temporary Email That Devours Spam</title>
+    
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    
+    <!-- Enhanced Content Security Policy - allows data: for favicon -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests;">
+    
+    <!-- Additional security headers -->
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    
+    <!-- Email domain configuration -->
+    <meta name="email-domain" content="EMAIL_DOMAIN_PLACEHOLDER">
+    
+    <!-- SEO -->
+    <meta name="description" content="Create temporary disposable email addresses that automatically expire. Perfect for signups, testing, and avoiding spam.">
+    <meta name="keywords" content="temporary email, disposable email, spam protection, temp mail">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="app.js" as="script">
+    <link rel="dns-prefetch" href="/api/">
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Email Creation Section -->
+        <section class="email-creator" id="emailCreator">
+            <div class="creator-container">
+                <!-- Header -->
+                <header class="header">
+                    <h1 class="logo-text">SpamEater</h1>
+                </header>
+                
+                <div class="creator-card">
+                    <h2>Create your disposable email</h2>
+                    
+                    <div class="email-input-group">
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="emailPrefix" 
+                                class="email-input" 
+                                placeholder="my-email"
+                                maxlength="50"
+                                pattern="[a-zA-Z0-9][a-zA-Z0-9.\-_]*[a-zA-Z0-9]"
+                                autocomplete="off"
+                                spellcheck="false"
+                                aria-label="Email prefix"
+                            >
+                            <span class="domain-suffix">@<span id="domainName">spameater.io</span></span>
+                        </div>
+                        <button class="create-btn" id="createBtn" disabled aria-label="Create email">
+                            <span class="btn-text">Feed the Eater</span>
+                            <span class="btn-icon">🍴</span>
+                        </button>
+                    </div>
+                    
+                    <div class="input-help">
+                        <small>Use letters, numbers, dots, hyphens, and underscores only</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inbox Section -->
+        <section class="inbox-section" id="inboxSection" style="display: none;">
+            <!-- Top Bar - OUTSIDE of email-switcher -->
+            <div class="inbox-top-bar">
+                <button class="home-btn" id="homeBtn" title="Go to Homepage" aria-label="Go to homepage">
+                    <span class="home-icon">🏠</span>
+                    <span class="home-text">Home</span>
+                </button>
+                <div class="email-status">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span class="status-text" id="statusText">Waiting for emails...</span>
+                </div>
+            </div>
+            
+            <!-- Email Switcher - SEPARATE from top bar -->
+            <div class="email-switcher">
+                <div class="switcher-input-group">
+                    <div class="switcher-wrapper">
+                        <input 
+                            type="text" 
+                            id="emailSwitcher" 
+                            class="switcher-input" 
+                            placeholder="Enter email or create new"
+                            maxlength="50"
+                            pattern="[a-zA-Z0-9][a-zA-Z0-9.\-_]*[a-zA-Z0-9]"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Switch email prefix"
+                        >
+                        <span class="switcher-domain">@<span id="switcherDomainName">spameater.io</span></span>
+                    </div>
+                    <button class="switch-btn" id="switchBtn" title="Switch/Create Email" aria-label="Switch or create email">
+                        <span>Switch</span>
+                        <span>↩️</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inbox -->
+            <div class="inbox-container">
+                <div class="inbox-header">
+                    <h3>
+                        <span class="inbox-icon" aria-hidden="true">📥</span>
+                        Your Inbox
+                        <span class="email-count" id="emailCount" aria-label="Email count">0</span>
+                    </h3>
+                    <button class="refresh-btn" id="refreshBtn" title="Refresh inbox" aria-label="Refresh inbox">
+                        <span class="refresh-icon">🔄</span>
+                    </button>
+                </div>
+
+                <!-- Email List -->
+                <div class="email-list" id="emailList" role="list" aria-label="Email list">
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-icon" aria-hidden="true">🍽️</div>
+                        <h4>Ready to eat spam!</h4>
+                        <p>Your temporary email is active. Any emails sent here will appear instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Email Detail Modal -->
+        <div class="modal-overlay" id="modalOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modalSubject">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 id="modalSubject">Email Subject</h3>
+                    <div class="modal-actions">
+                        <button class="modal-delete" id="modalDelete" title="Delete email" aria-label="Delete email">🗑️</button>
+                        <button class="modal-close" id="modalClose" aria-label="Close modal">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="email-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">From:</span>
+                            <span class="meta-value" id="modalSender"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Received:</span>
+                            <span class="meta-value" id="modalTime"></span>
+                        </div>
+                    </div>
+                    <div class="email-content" id="modalContent">
+                        <!-- Email content will be loaded here -->
+                    </div>
+                    <div class="headers-toggle">
+                        <button class="toggle-btn" id="toggleHeaders" aria-label="Toggle email headers">
+                            <span id="toggleText">Show Headers</span>
+                            <span>📋</span>
+                        </button>
+                        <div class="email-headers" id="emailHeaders" style="display: none;">
+                            <!-- Headers will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            <span>Made with ❤️ for privacy</span>
+            <span class="separator">•</span>
+            <span>Emails auto-delete after 24 hours</span>
+            <span class="separator">•</span>
+            <span>No tracking, no storage</span>
+        <span class="separator">•</span>
+        <span><a href="https://github.com/rufftruffles/spameater" target="_blank" rel="noopener" style="color: #ff6b35; text-decoration: none;">GitHub</a></span>
+        </p>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
