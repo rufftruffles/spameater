@@ -1,10 +1,21 @@
 # SpamEater - Self-Hosted Temporary Email Service
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/rufftruffles/spameater)
+![GitHub stars](https://img.shields.io/github/stars/rufftruffles/spameater)
+![GitHub issues](https://img.shields.io/github/issues/rufftruffles/spameater)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker/)
 [![Security](https://img.shields.io/badge/Security-Hardened-green.svg)](deploy/)
 
 SpamEater is a production-ready, self-hosted temporary email service that automatically destroys emails after 24 hours. Perfect for testing, avoiding spam, and protecting your privacy.
+
+## Screenshots
+
+![SpamEater Landing Page](screenshots/1.png)
+*Create temporary email addresses instantly with SpamEater's clean interface*
+
+![SpamEater Inbox View](screenshots/2.png)
+*Active inbox ready to receive and display emails in real-time*
 
 ## Features
 
@@ -25,6 +36,33 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
 - **fail2ban integration** for brute force protection
 - **Security event logging** and audit trails
 - **XSS, SQL injection, and path traversal protection**
+
+## Requirements
+
+### Prerequisites (MUST be completed before installation)
+
+1. **Domain Name**: You must own a domain (e.g., example.com)
+2. **DNS Configuration**: Configure these DNS records BEFORE installation:
+   ```
+   MX    example.com         10 mail.example.com
+   A     mail.example.com    YOUR_SERVER_IP
+   A     example.com         YOUR_SERVER_IP
+   ```
+   **Note**: DNS changes can take up to 48 hours to propagate. Verify DNS is working before proceeding.
+
+3. **Server Requirements**:
+   - Ports 25, 80, 443 must be open and not in use
+   - Root/sudo access
+   - Static IP address
+
+### For Docker
+- Docker Engine 20.10+
+- Docker Compose v2+
+- AlmaLinux 9 / Ubuntu 22.04+ / Debian 11+ host OS
+
+### For Native Installation
+- AlmaLinux 9 / RHEL 9 / Rocky Linux 9
+- Fresh installation recommended
 
 ## Quick Start
 
@@ -70,33 +108,6 @@ cd spameater
 # Run setup (AlmaLinux/RHEL/Rocky 9)
 sudo ./setup.sh
 ```
-
-## Requirements
-
-### Prerequisites (MUST be completed before installation)
-
-1. **Domain Name**: You must own a domain (e.g., example.com)
-2. **DNS Configuration**: Configure these DNS records BEFORE installation:
-   ```
-   MX    example.com         10 mail.example.com
-   A     mail.example.com    YOUR_SERVER_IP
-   A     example.com         YOUR_SERVER_IP
-   ```
-   **Note**: DNS changes can take up to 48 hours to propagate. Verify DNS is working before proceeding.
-
-3. **Server Requirements**:
-   - Ports 25, 80, 443 must be open and not in use
-   - Root/sudo access
-   - Static IP address
-
-### For Docker
-- Docker Engine 20.10+
-- Docker Compose v2+
-- AlmaLinux 9 / Ubuntu 22.04+ / Debian 11+ host OS
-
-### For Native Installation
-- AlmaLinux 9 / RHEL 9 / Rocky Linux 9
-- Fresh installation recommended
 
 ## Configuration
 
