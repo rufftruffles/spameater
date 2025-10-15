@@ -52,9 +52,9 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
 1. **Domain Name**: You must own a domain (e.g., example.com)
 2. **DNS Configuration**: Configure these DNS records BEFORE installation:
    ```
-   MX    example.com         10 mail.example.com
-   A     mail.example.com    YOUR_SERVER_IP
-   A     example.com         YOUR_SERVER_IP
+   MX  example.com       10 mail.example.com
+   A   mail.example.com  YOUR_SERVER_IP
+   A   example.com       YOUR_SERVER_IP
    ```
    **Note**: DNS changes can take up to 48 hours to propagate. Verify DNS is working before proceeding.
 
@@ -78,9 +78,9 @@ SpamEater is a production-ready, self-hosted temporary email service that automa
 
 Before any installation, configure your DNS records:
 ```
-MX    example.com         10 mail.example.com
-A     mail.example.com    YOUR_SERVER_IP
-A     example.com         YOUR_SERVER_IP
+MX  example.com       10 mail.example.com
+A   mail.example.com  YOUR_SERVER_IP
+A   example.com       YOUR_SERVER_IP
 ```
 
 Verify DNS is working:
@@ -123,9 +123,9 @@ sudo ./setup.sh
 
 Configure your DNS records at your domain registrar or DNS provider:
 ```
-MX    example.com         10 mail.example.com
-A     mail.example.com    YOUR_SERVER_IP
-A     example.com         YOUR_SERVER_IP
+MX  example.com       10 mail.example.com
+A   mail.example.com  YOUR_SERVER_IP
+A   example.com       YOUR_SERVER_IP
 ```
 
 **Important**: 
@@ -204,17 +204,6 @@ The setup script will:
 ```bash
 sudo ./uninstall.sh
 ```
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/inbox/create` | POST | Create temporary inbox |
-| `/api/inbox/{prefix}` | GET | Get inbox contents |
-| `/api/email/{id}` | GET | Get email details |
-| `/api/email/{id}` | DELETE | Delete email |
-| `/api/health` | GET | Health check |
-| `/api/stats` | GET | Usage statistics |
 
 ## Security
 
