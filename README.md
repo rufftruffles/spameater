@@ -267,6 +267,8 @@ This removes all services, data, and configurations.
 
 </details>
 
+---
+
 ## Architecture
 
 ```
