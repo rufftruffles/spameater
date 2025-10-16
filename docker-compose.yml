@@ -1,0 +1,104 @@
+version: '3.8'
+
+# ============================================
+# SpamEater - Disposable Email Server
+# ============================================
+# 
+# QUICK START:
+# 1. Edit hostname (line 28)
+# 2. Edit EMAIL_DOMAIN below (line 46)
+# 3. Edit WEB_DOMAIN (line 51) (can be main example.com or app.example.com depending on user preference)
+# 4. Run: docker compose up -d
+# 5. Done!
+#
+# IMPORTANT: Configure DNS FIRST:
+#   MX  example.com       10 mail.example.com
+#   A   app.example.com  YOUR_SERVER_IP
+#   A   example.com       YOUR_SERVER_IP
+# ============================================
+
+services:
+  spameater:
+    image: ghcr.io/rufftruffles/spameater:latest
+    
+    container_name: spameater
+    
+    # ============ EDIT THIS ============
+    # Replace with your actual domain
+    hostname: example.com
+    # ===================================
+    
+    privileged: true  # Required for fail2ban
+    
+    ports:
+      - "25:25"      # SMTP
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+    
+    volumes:
+      - spameater_data:/opt/spameater/data
+      - spameater_logs:/opt/spameater/logs  
+      - letsencrypt_certs:/etc/letsencrypt
+    
+    environment:
+      # ============ REQUIRED - EDIT THIS ============
+      # Your email domain (e.g., example.com)
+      # Emails will be received at: anything@example.com
+      EMAIL_DOMAIN: example.com
+      
+      # ============ OPTIONAL ============
+      # Web interface domain (leave empty to use EMAIL_DOMAIN)
+      # Uncomment to use a different domain for the web interface:
+      WEB_DOMAIN: app.example.com
+      
+      # Admin email for Let's Encrypt notifications
+      # Leave empty for auto: admin@example.com
+      ADMIN_EMAIL: ""
+      
+      # ============ AUTO-GENERATED ============
+      # Security secrets - leave empty for auto-generation (recommended)
+      DELETE_TOKEN_SECRET: ""
+      CSRF_SECRET: ""
+      ENCRYPTION_KEY: ""
+      
+      # ============ ADVANCED ============
+      # Disable SSL (for testing only, set to "true")
+      DISABLE_SSL: "false"
+      
+      # Disable automatic SSL certificate generation
+      AUTO_SSL: "true"
+    
+    restart: unless-stopped
+    
+    networks:
+      - spameater_network
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  spameater_data:
+    driver: local
+      
+  spameater_logs:
+    driver: local
+      
+  letsencrypt_certs:
+    driver: local
+
+networks:
+  spameater_network:
+    driver: bridge
