@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker/)
 [![Security](https://img.shields.io/badge/Security-Hardened-green.svg)](deploy/)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rufftruffles/spameater/docker-publish.yml?branch=main)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rufftruffles/spameater/docker-publish.yml)
 
 **Privacy-focused disposable email service with automatic 24-hour deletion.**
 
