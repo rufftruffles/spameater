@@ -15,19 +15,16 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
 
 <details>
 <summary><b>Click to view screenshots</b></summary>
-
 <br>
-
-![SpamEater Home](screenshots/1.png)
-
-*Create disposable email addresses instantly*
-
-<br>
-
-![SpamEater Inbox](screenshots/2.png)
-
-*Real-time email reception with clean interface*
-
+<div align="center">
+  <img src="screenshots/1.png" alt="SpamEater Landing Page" width="600">
+  <br>
+  <em>Create disposable email addresses instantly</em>
+  <br><br>
+  <img src="screenshots/2.png" alt="SpamEater Inbox View" width="600">
+  <br>
+  <em>Real-time email reception with clean interface</em>
+</div>
 </details>
 
 ## Features
