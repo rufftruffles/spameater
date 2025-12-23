@@ -244,7 +244,7 @@ class SpamEater {
     
     // Security: Enhanced email validation
     isValidEmail(email) {
-        const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,48}[a-zA-Z0-9]@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
+        const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,48}[a-zA-Z0-9])?@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
         
         // Basic regex check
         if (!emailRegex.test(email.toLowerCase()) || email.length > 100) {
@@ -338,20 +338,20 @@ class SpamEater {
     async createEmail() {
         const input = document.getElementById('emailPrefix');
         const prefix = input?.value?.trim();
-        
+
         if (!prefix) {
             this.showToast('Please enter an email prefix', 'error');
             input?.focus();
             return;
         }
-        
+
         // Security: Enhanced validation
-        if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,48}[a-zA-Z0-9]$/.test(prefix)) {
+        if (!/^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,48}[a-zA-Z0-9])?$/.test(prefix)) {
             this.showToast('Invalid email prefix format', 'error');
             input?.focus();
             return;
         }
-        
+
         if (prefix.includes('..')) {
             this.showToast('Consecutive dots not allowed', 'error');
             input?.focus();
@@ -422,27 +422,27 @@ class SpamEater {
         }
         
         // Security: Enhanced validation
-        if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,48}[a-zA-Z0-9]$/.test(prefix)) {
+        if (!/^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,48}[a-zA-Z0-9])?$/.test(prefix)) {
             this.showToast('Invalid email prefix format', 'error');
             input?.focus();
             return;
         }
-        
+
         if (prefix.includes('..')) {
             this.showToast('Consecutive dots not allowed', 'error');
             input?.focus();
             return;
         }
-        
+
         // Normalize email to lowercase
         const email = `${prefix}@${this.domain}`.toLowerCase();
-        
+
         // Verify it's a valid email
         if (!this.isValidEmail(email)) {
             this.showToast('Invalid email format', 'error');
             return;
         }
-        
+
         // Check if it's the same email (case-insensitive)
         if (email === this.currentEmail?.toLowerCase()) {
             this.showToast('Already viewing this inbox', 'error');

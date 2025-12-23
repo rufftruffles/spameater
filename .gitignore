@@ -41,3 +41,7 @@ docker/.env
 docker/*.env.local
 docker/*.env.production
 docker/build.log
+
+# Claude Code
+.claude/
+CLAUDE.md

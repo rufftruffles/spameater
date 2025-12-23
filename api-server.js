@@ -437,7 +437,7 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
     }
     
     // Validate email format with enhanced checks
-    const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,48}[a-zA-Z0-9]@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,48}[a-zA-Z0-9])?@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
     
     if (!email || !emailRegex.test(email) || email.length > 100 || email.includes('..')) {
         await logSecurityEvent('invalid_input', { 

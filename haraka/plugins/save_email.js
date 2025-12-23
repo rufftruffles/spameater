@@ -85,8 +85,8 @@ function generateHash(text) {
 
 // Security: Validate email address format with stricter rules
 function isValidEmail(email) {
-    // More strict email validation
-    const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,48}[a-zA-Z0-9]@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
+    // More strict email validation (allows single-char prefixes like "a@domain.com")
+    const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,48}[a-zA-Z0-9])?@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/;
     
     // Additional validation
     if (!emailRegex.test(email) || email.length > 100) return false;
