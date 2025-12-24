@@ -144,7 +144,7 @@ else
     # Production mode - handle SSL certificates
     if [ -d "/etc/letsencrypt/live/$WEB_DOMAIN" ]; then
         echo "✅ SSL certificates found for $WEB_DOMAIN"
-        
+
         # Check certificate validity
         if openssl x509 -checkend 86400 -noout -in "/etc/letsencrypt/live/$WEB_DOMAIN/cert.pem" 2>/dev/null; then
             echo "✅ Certificate is valid"
@@ -152,6 +152,14 @@ else
             echo "⚠️ Certificate expiring soon, attempting renewal..."
             certbot renew --quiet || echo "⚠️ Renewal failed, will retry later"
         fi
+
+        # Configure nginx to use existing certificates
+        echo "🔧 Configuring nginx for SSL..."
+        certbot --nginx \
+            -d "$WEB_DOMAIN" \
+            --redirect \
+            --non-interactive \
+            --reinstall || echo "⚠️ Could not configure nginx for SSL, may need manual setup"
     else
         echo "📋 No existing SSL certificates found"
         
