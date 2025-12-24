@@ -160,6 +160,10 @@ else
             --redirect \
             --non-interactive \
             --reinstall || echo "⚠️ Could not configure nginx for SSL, may need manual setup"
+
+        # Stop nginx so supervisord can start it fresh
+        nginx -s stop 2>/dev/null || pkill nginx 2>/dev/null || true
+        sleep 1
     else
         echo "📋 No existing SSL certificates found"
         
