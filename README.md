@@ -12,6 +12,12 @@
 
 SpamEater is a self-hosted, open-source disposable email server that prioritizes privacy and security. Perfect for testing, sign-ups, and protecting your real email from spam. All emails are automatically deleted after 24 hours with no recovery option.
 
+## What's New in v3
+
+**Cyber Neon UI** - Complete visual redesign with a modern dark theme featuring vibrant orange and cyan accents, smooth animations, and enhanced visual feedback.
+
+**Mobile-First Design** - Fully responsive interface optimized for all screen sizes, from small phones to large desktop monitors.
+
 ## Screenshots
 
 <details>
@@ -25,6 +31,10 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
   <img src="screenshots/2.png" alt="SpamEater Inbox View" width="600">
   <br>
   <em>Real-time email reception with clean interface</em>
+  <br><br>
+  <img src="screenshots/3.png" alt="SpamEater Email Modal" width="600">
+  <br>
+  <em>View email details with one-click deletion</em>
 </div>
 </details>
 
@@ -50,6 +60,7 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
 - High-performance Haraka SMTP server
 - Lightweight SQLite database
 - Vanilla JavaScript frontend (no frameworks)
+- Mobile-friendly responsive design
 - Real-time email updates via polling
 - RESTful API
 - Docker support with prebuilt images

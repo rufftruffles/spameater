@@ -129,7 +129,8 @@ class SpamEater {
         const modalOverlay = document.getElementById('modalOverlay');
         const modalClose = document.getElementById('modalClose');
         const modalDelete = document.getElementById('modalDelete');
-        
+        const modalFullscreen = document.getElementById('modalFullscreen');
+
         modalOverlay?.addEventListener('click', (e) => {
             if (e.target === modalOverlay) this.closeModal();
         });
@@ -139,7 +140,8 @@ class SpamEater {
                 this.deleteEmail(this.currentEmailData.id, true);
             }
         });
-        
+        modalFullscreen?.addEventListener('click', () => this.toggleFullscreen());
+
         // Headers toggle
         const toggleHeaders = document.getElementById('toggleHeaders');
         toggleHeaders?.addEventListener('click', () => this.toggleHeaders());
@@ -280,59 +282,30 @@ class SpamEater {
         return sanitized;
     }
     
-    // Security: Enhanced HTML sanitization to prevent XSS
+    // Security: HTML sanitization using DOMPurify
+    // Keeps <style> tags for proper email rendering, displayed in sandboxed iframe
     sanitizeHtml(html) {
         if (!html) return '';
-        
-        // Create a temporary element to parse HTML
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        
-        // Remove all script tags
-        const scripts = temp.querySelectorAll('script');
-        scripts.forEach(script => script.remove());
-        
-        // Remove all elements with event handlers
-        const allElements = temp.querySelectorAll('*');
-        allElements.forEach(el => {
-            // Remove all event attributes
-            for (let attr of Array.from(el.attributes)) {
-                if (attr.name.startsWith('on') || attr.name === 'href' && attr.value.startsWith('javascript:')) {
-                    el.removeAttribute(attr.name);
-                }
-            }
-            
-            // Remove javascript: URLs
-            if (el.href && el.href.startsWith('javascript:')) {
-                el.removeAttribute('href');
-            }
-            if (el.src && el.src.startsWith('javascript:')) {
-                el.removeAttribute('src');
-            }
-            
-            // Remove data: URLs from images (prevent tracking pixels)
-            if (el.tagName === 'IMG' && el.src && el.src.startsWith('data:')) {
-                el.removeAttribute('src');
-                el.setAttribute('alt', '[Image removed for security]');
-            }
+
+        // Use DOMPurify for battle-tested XSS prevention
+        // - ADD_TAGS: ['style'] keeps CSS styling for proper email rendering
+        // - Content is displayed in sandboxed iframe for extra security
+        return DOMPurify.sanitize(html, {
+            ADD_TAGS: ['style'],                    // Keep style tags for email CSS
+            FORBID_TAGS: [
+                'script', 'iframe', 'frame', 'frameset',
+                'object', 'embed', 'applet', 'form',
+                'input', 'button', 'select', 'textarea',
+                'link', 'meta', 'base'
+            ],
+            FORBID_ATTR: [
+                'onerror', 'onload', 'onclick', 'onmouseover',
+                'onfocus', 'onblur', 'onchange', 'onsubmit'
+            ],
+            ALLOW_DATA_ATTR: false,                 // No data-* attributes
+            ALLOW_ARIA_ATTR: true,                  // Keep accessibility attributes
+            KEEP_CONTENT: true                      // Keep text content when removing tags
         });
-        
-        // Remove dangerous tags
-        const dangerousTags = ['iframe', 'object', 'embed', 'link', 'meta', 'style', 'base', 'form'];
-        dangerousTags.forEach(tag => {
-            const elements = temp.querySelectorAll(tag);
-            elements.forEach(el => el.remove());
-        });
-        
-        // Remove SVG with scripts
-        const svgs = temp.querySelectorAll('svg');
-        svgs.forEach(svg => {
-            if (svg.innerHTML.includes('script') || svg.innerHTML.includes('onload')) {
-                svg.remove();
-            }
-        });
-        
-        return temp.innerHTML;
     }
     
     async createEmail() {
@@ -667,19 +640,21 @@ class SpamEater {
         const div = document.createElement('div');
         div.className = 'email-item';
         div.setAttribute('data-email-id', email.id);
-        
+
         const timeAgo = this.formatTimeAgo(email.receivedAt);
         const sender = this.sanitizeText(email.sender || 'Unknown sender');
         const senderName = email.senderName ? this.sanitizeText(email.senderName) : sender;
         const subject = this.sanitizeText(email.subject || '(No subject)');
-        
+
         div.innerHTML = `
             <div class="email-content-wrapper" data-email-id="${email.id}">
-                <div class="email-sender">${senderName}</div>
-                <div class="email-subject">${subject}</div>
+                <div class="email-info">
+                    <div class="email-sender">${senderName}</div>
+                    <div class="email-subject">${subject}</div>
+                </div>
                 <div class="email-meta">
-                    <span class="email-size">${this.formatBytes(email.size || 0)}</span>
                     <span class="email-time">${timeAgo}</span>
+                    <span class="email-size">${this.formatBytes(email.size || 0)}</span>
                 </div>
             </div>
             <button class="delete-btn" title="Delete email" data-email-id="${email.id}">
@@ -728,46 +703,151 @@ class SpamEater {
         const modalSubject = document.getElementById('modalSubject');
         const modalSender = document.getElementById('modalSender');
         const modalTime = document.getElementById('modalTime');
-        const modalContent = document.getElementById('modalContent');
+        const emailFrame = document.getElementById('emailFrame');
         const toggleText = document.getElementById('toggleText');
         const emailHeaders = document.getElementById('emailHeaders');
-        
+        const emailModal = document.getElementById('emailModal');
+
         if (modalSubject) modalSubject.textContent = emailData.subject;
         if (modalSender) modalSender.textContent = emailData.senderName || emailData.sender;
         if (modalTime) modalTime.textContent = emailData.time;
-        if (modalContent) {
-            // Display HTML content if available, otherwise plain text
+
+        // Display email content in sandboxed iframe for security
+        if (emailFrame) {
+            let content;
             if (emailData.isHtml) {
-                // Sanitize HTML before displaying
-                modalContent.innerHTML = this.sanitizeHtml(emailData.content);
-            } else {
-                // Display plain text (already sanitized)
-                modalContent.textContent = emailData.content;
-            }
+                // Sanitize HTML with DOMPurify before putting in iframe
+                const sanitizedHtml = this.sanitizeHtml(emailData.content);
+                // Wrap in a basic HTML document with dark theme styling
+                content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+            color: #e0e0e0 !important;
+            background: #0a0a0f !important;
+            margin: 0 !important;
+            padding: 16px !important;
+            word-wrap: break-word;
         }
-        
+        /* Force light text on all elements */
+        div, span, p, td, th, li, label, h1, h2, h3, h4, h5, h6 {
+            color: #e0e0e0 !important;
+        }
+        a { color: #00ff88 !important; }
+        img { max-width: 100%; height: auto; }
+        pre, code {
+            background: #1a1a1f !important;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e0e0e0 !important;
+        }
+        blockquote {
+            border-left: 3px solid #00ff88 !important;
+            margin: 1em 0;
+            padding-left: 1em;
+            color: #aaa !important;
+        }
+        table { border-collapse: collapse; width: 100%; background: transparent !important; }
+        td, th { border: 1px solid #333 !important; padding: 8px; color: #e0e0e0 !important; }
+    </style>
+</head>
+<body>${sanitizedHtml}</body>
+</html>`;
+            } else {
+                // Plain text - wrap in pre tag for proper formatting
+                const escapedText = emailData.content
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e0e0e0;
+            background: #0a0a0f;
+            margin: 0;
+            padding: 16px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>${escapedText}</body>
+</html>`;
+            }
+
+            // Use srcdoc for sandboxed content
+            emailFrame.srcdoc = content;
+        }
+
         // Reset headers display
         if (toggleText) toggleText.textContent = 'Show Headers';
         if (emailHeaders) {
             emailHeaders.style.display = 'none';
             emailHeaders.innerHTML = '';
         }
-        
+
+        // Reset fullscreen state
+        if (emailModal) {
+            emailModal.classList.remove('modal-fullscreen');
+        }
+
         if (modalOverlay) {
             modalOverlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
     }
-    
+
     closeModal() {
         const modalOverlay = document.getElementById('modalOverlay');
+        const emailFrame = document.getElementById('emailFrame');
+        const emailModal = document.getElementById('emailModal');
+
         if (modalOverlay) {
             modalOverlay.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
-        
+
+        // Clear iframe content
+        if (emailFrame) {
+            emailFrame.srcdoc = '';
+        }
+
+        // Reset fullscreen
+        if (emailModal) {
+            emailModal.classList.remove('modal-fullscreen');
+        }
+
         // Clear current email data
         this.currentEmailData = null;
+    }
+
+    toggleFullscreen() {
+        const emailModal = document.getElementById('emailModal');
+        const fullscreenBtn = document.getElementById('modalFullscreen');
+
+        if (emailModal) {
+            emailModal.classList.toggle('modal-fullscreen');
+
+            // Update button icon
+            if (fullscreenBtn) {
+                fullscreenBtn.textContent = emailModal.classList.contains('modal-fullscreen') ? '⛶' : '⛶';
+                fullscreenBtn.title = emailModal.classList.contains('modal-fullscreen') ? 'Exit fullscreen' : 'Toggle fullscreen';
+            }
+        }
     }
     
     toggleHeaders() {

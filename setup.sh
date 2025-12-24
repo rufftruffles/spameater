@@ -56,36 +56,56 @@ useradd -r -s /bin/false -d /opt/spameater spameater 2>/dev/null || echo "User a
 ORIGINAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Detect OS and install dependencies
-echo -e "\n📦 Installing dependencies..."
+echo -e "\n📦 Installing system dependencies..."
 if command -v dnf >/dev/null 2>&1; then
     PKG_MGR="dnf"
-    echo "Detected RHEL-based system"
-    dnf update -y -q
-    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - >/dev/null 2>&1
-    dnf install -y nodejs nginx sqlite certbot python3-certbot-nginx fail2ban firewalld -q
-    dnf groupinstall -y "Development Tools" -q
-    dnf install -y python3-devel sqlite-devel -q
-    dnf install -y nginx-mod-modsecurity libmodsecurity mod_security_crs -q 2>/dev/null || echo "⚠️ ModSecurity not available"
-    systemctl enable --now firewalld
+    echo "   Detected: RHEL/Fedora-based system (dnf)"
+    echo -n "   ├─ Updating package cache... "
+    dnf update -y -q && echo "✓"
+    echo -n "   ├─ Adding Node.js 22 repository... "
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && echo "✓"
+    echo -n "   ├─ Installing: nodejs nginx sqlite certbot fail2ban firewalld... "
+    dnf install -y nodejs nginx sqlite certbot python3-certbot-nginx fail2ban firewalld -q && echo "✓"
+    echo -n "   ├─ Installing: Development Tools (gcc, make, etc.)... "
+    dnf groupinstall -y "Development Tools" -q && echo "✓"
+    echo -n "   ├─ Installing: python3-devel sqlite-devel... "
+    dnf install -y python3-devel sqlite-devel -q && echo "✓"
+    echo -n "   ├─ Installing: ModSecurity WAF... "
+    dnf install -y nginx-mod-modsecurity libmodsecurity mod_security_crs -q 2>/dev/null && echo "✓" || echo "⚠️ not available"
+    echo -n "   └─ Enabling firewalld... "
+    systemctl enable --now firewalld >/dev/null 2>&1 && echo "✓"
 elif command -v yum >/dev/null 2>&1; then
     PKG_MGR="yum"
-    echo "Detected CentOS/RHEL 7"
-    yum update -y -q
-    yum install -y epel-release -q
-    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - >/dev/null 2>&1
-    yum install -y nodejs nginx sqlite certbot python2-certbot-nginx fail2ban firewalld -q
-    yum groupinstall -y "Development Tools" -q
-    yum install -y python3-devel sqlite-devel -q
-    yum install -y mod_security mod_security_crs -q 2>/dev/null || echo "⚠️ ModSecurity not available"
-    systemctl enable --now firewalld
+    echo "   Detected: CentOS/RHEL 7 (yum)"
+    echo -n "   ├─ Updating package cache... "
+    yum update -y -q && echo "✓"
+    echo -n "   ├─ Installing EPEL repository... "
+    yum install -y epel-release -q && echo "✓"
+    echo -n "   ├─ Adding Node.js 22 repository... "
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && echo "✓"
+    echo -n "   ├─ Installing: nodejs nginx sqlite certbot fail2ban firewalld... "
+    yum install -y nodejs nginx sqlite certbot python2-certbot-nginx fail2ban firewalld -q && echo "✓"
+    echo -n "   ├─ Installing: Development Tools (gcc, make, etc.)... "
+    yum groupinstall -y "Development Tools" -q && echo "✓"
+    echo -n "   ├─ Installing: python3-devel sqlite-devel... "
+    yum install -y python3-devel sqlite-devel -q && echo "✓"
+    echo -n "   ├─ Installing: ModSecurity WAF... "
+    yum install -y mod_security mod_security_crs -q 2>/dev/null && echo "✓" || echo "⚠️ not available"
+    echo -n "   └─ Enabling firewalld... "
+    systemctl enable --now firewalld >/dev/null 2>&1 && echo "✓"
 else
     PKG_MGR="apt"
-    echo "Detected Debian-based system"
-    apt update -qq
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1
-    apt install -y nodejs nginx sqlite3 certbot python3-certbot-nginx fail2ban ufw -qq
-    apt install -y build-essential python3-dev libsqlite3-dev -qq
-    apt install -y libnginx-mod-modsecurity libmodsecurity3 libmodsecurity-dev -qq 2>/dev/null || echo "⚠️ ModSecurity not available"
+    echo "   Detected: Debian/Ubuntu-based system (apt)"
+    echo -n "   ├─ Updating package cache... "
+    apt update -qq && echo "✓"
+    echo -n "   ├─ Adding Node.js 22 repository... "
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && echo "✓"
+    echo -n "   ├─ Installing: nodejs nginx sqlite3 certbot fail2ban ufw... "
+    apt install -y nodejs nginx sqlite3 certbot python3-certbot-nginx fail2ban ufw -qq && echo "✓"
+    echo -n "   ├─ Installing: build-essential python3-dev libsqlite3-dev... "
+    apt install -y build-essential python3-dev libsqlite3-dev -qq && echo "✓"
+    echo -n "   └─ Installing: ModSecurity WAF... "
+    apt install -y libnginx-mod-modsecurity libmodsecurity3 libmodsecurity-dev -qq 2>/dev/null && echo "✓" || echo "⚠️ not available"
 fi
 
 # Verify Node.js version
@@ -130,17 +150,20 @@ npm install -g Haraka --loglevel=error 2>/dev/null
 cd /opt/spameater/haraka
 sudo -u spameater haraka -i /opt/spameater/haraka >/dev/null 2>&1
 
-# Install dependencies
-echo "📚 Installing dependencies..."
+# Install npm dependencies
+echo -e "\n📚 Installing npm dependencies..."
 mkdir -p /tmp/spameater-npm-cache
 chown -R spameater:spameater /tmp/spameater-npm-cache
 
 # Install for Haraka
-sudo -u spameater npm install sqlite3 --cache /tmp/spameater-npm-cache --unsafe-perm --loglevel=error 2>/dev/null
+echo -n "   ├─ Haraka plugins: sqlite3 isomorphic-dompurify... "
+cd /opt/spameater/haraka
+sudo -u spameater npm install sqlite3 isomorphic-dompurify --cache /tmp/spameater-npm-cache --unsafe-perm --loglevel=error 2>/dev/null && echo "✓" || echo "⚠️ failed"
 
 # Install for API server
+echo -n "   └─ API server: express helmet express-rate-limit sqlite3... "
 cd /opt/spameater
-sudo -u spameater npm install express helmet express-rate-limit sqlite3 --cache /tmp/spameater-npm-cache --unsafe-perm --loglevel=error 2>/dev/null
+sudo -u spameater npm install express helmet express-rate-limit sqlite3 --cache /tmp/spameater-npm-cache --unsafe-perm --loglevel=error 2>/dev/null && echo "✓" || echo "⚠️ failed"
 
 # Copy all files
 echo -e "\n📄 Copying application files..."
@@ -410,11 +433,29 @@ echo "└───────────────────────�
 echo ""
 echo "⚠️ IMPORTANT: Save the credentials above!"
 echo ""
+
+# Get server's public IP (try multiple methods)
+SERVER_IP=""
+if command -v curl >/dev/null 2>&1; then
+    SERVER_IP=$(curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null)
+fi
+if [ -z "$SERVER_IP" ] && command -v wget >/dev/null 2>&1; then
+    SERVER_IP=$(wget -qO- --timeout=5 ifconfig.me 2>/dev/null)
+fi
+if [ -z "$SERVER_IP" ]; then
+    # Fallback to primary network interface IP
+    SERVER_IP=$(ip -4 route get 8.8.8.8 2>/dev/null | awk '{print $7; exit}')
+fi
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+SERVER_IP="${SERVER_IP:-[YOUR_SERVER_IP]}"
+
 echo "📋 DNS Configuration Required:"
 echo "1. MX record: $EMAIL_DOMAIN → 10 $EMAIL_DOMAIN"
-echo "2. A record: $EMAIL_DOMAIN → [YOUR_SERVER_IP]"
+echo "2. A record: $EMAIL_DOMAIN → $SERVER_IP"
 if [[ "$WEB_DOMAIN" != "$EMAIL_DOMAIN" ]]; then
-    echo "3. A record: $WEB_DOMAIN → [YOUR_SERVER_IP]"
+    echo "3. A record: $WEB_DOMAIN → $SERVER_IP"
 fi
 echo ""
 echo "📊 Service commands:"

@@ -9,8 +9,8 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     
-    <!-- Enhanced Content Security Policy - allows data: for favicon -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests;">
+    <!-- Enhanced Content Security Policy - allows data: for favicon, DOMPurify CDN, and sandboxed iframes -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://cdnjs.cloudflare.com; frame-src blob:; base-uri 'none'; form-action 'self'; upgrade-insecure-requests;">
     
     <!-- Additional security headers -->
     <meta http-equiv="Referrer-Policy" content="no-referrer">
@@ -27,8 +27,16 @@
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
     
+    <!-- Google Fonts - Cyber Neon Theme -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Styles -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- DOMPurify for secure HTML sanitization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js" integrity="sha512-Ll+TuDvrWDNNRnFFIM8dOiw7Go7dsHyxRp4RutiIFW/wm3DgDmCnRZow6AqbXnCbpWu93yM1O34q+4ggzGeXVA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
     <!-- Preload critical resources -->
     <link rel="preload" href="app.js" as="script">
@@ -43,17 +51,16 @@
                 <!-- Header -->
                 <header class="header">
                     <h1 class="logo-text">SpamEater</h1>
+                    <p class="tagline">// DISPOSABLE EMAIL PROTOCOL</p>
                 </header>
-                
+
                 <div class="creator-card">
-                    <h2>Create your disposable email</h2>
-                    
                     <div class="email-input-group">
                         <div class="input-wrapper">
-                            <input 
-                                type="text" 
-                                id="emailPrefix" 
-                                class="email-input" 
+                            <input
+                                type="text"
+                                id="emailPrefix"
+                                class="email-input"
                                 placeholder="my-email"
                                 maxlength="50"
                                 pattern="[a-zA-Z0-9][a-zA-Z0-9.\-_]*[a-zA-Z0-9]"
@@ -68,9 +75,21 @@
                             <span class="btn-icon">🍴</span>
                         </button>
                     </div>
-                    
-                    <div class="input-help">
-                        <small>Use letters, numbers, dots, hyphens, and underscores only</small>
+
+                    <!-- Feature Icons -->
+                    <div class="features">
+                        <div class="feature">
+                            <div class="feature-icon">🔐</div>
+                            <div class="feature-text">AES-256</div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">⏱️</div>
+                            <div class="feature-text">24H TTL</div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">👁️</div>
+                            <div class="feature-text">ZERO LOG</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -140,10 +159,11 @@
 
         <!-- Email Detail Modal -->
         <div class="modal-overlay" id="modalOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modalSubject">
-            <div class="modal">
+            <div class="modal" id="emailModal">
                 <div class="modal-header">
                     <h3 id="modalSubject">Email Subject</h3>
                     <div class="modal-actions">
+                        <button class="modal-fullscreen" id="modalFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
                         <button class="modal-delete" id="modalDelete" title="Delete email" aria-label="Delete email">🗑️</button>
                         <button class="modal-close" id="modalClose" aria-label="Close modal">✕</button>
                     </div>
@@ -159,9 +179,13 @@
                             <span class="meta-value" id="modalTime"></span>
                         </div>
                     </div>
-                    <div class="email-content" id="modalContent">
-                        <!-- Email content will be loaded here -->
-                    </div>
+                    <!-- Sandboxed iframe for secure email rendering -->
+                    <iframe
+                        id="emailFrame"
+                        class="email-frame"
+                        sandbox="allow-same-origin"
+                        title="Email content"
+                    ></iframe>
                     <div class="headers-toggle">
                         <button class="toggle-btn" id="toggleHeaders" aria-label="Toggle email headers">
                             <span id="toggleText">Show Headers</span>
@@ -178,15 +202,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>
-            <span>Made with ❤️ for privacy</span>
-            <span class="separator">•</span>
-            <span>Emails auto-delete after 24 hours</span>
-            <span class="separator">•</span>
-            <span>No tracking, no storage</span>
-        <span class="separator">•</span>
-        <span><a href="https://github.com/rufftruffles/spameater" target="_blank" rel="noopener" style="color: #ff6b35; text-decoration: none;">GitHub</a></span>
-        </p>
+        <p>// made with ❤️ for privacy • <a href="https://github.com/rufftruffles/spameater" target="_blank" rel="noopener">github.com/spameater</a></p>
     </footer>
 
     <!-- Toast Notifications -->

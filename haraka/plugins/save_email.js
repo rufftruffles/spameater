@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
+const DOMPurify = require('isomorphic-dompurify');
 
 // Database connection
 const DB_PATH = '/opt/spameater/data/emails.db';
@@ -115,63 +116,41 @@ function sanitizeText(text, maxLength = 50000) {
     return sanitized.substring(0, maxLength);
 }
 
-// SECURITY FIX: Enhanced HTML sanitization
+// SECURITY FIX: HTML sanitization using DOMPurify
+// Keeps <style> tags for proper email rendering, removes dangerous elements
 function sanitizeHtml(html, maxLength = 500000) {
     if (!html) return '';
-    
-    // Remove null bytes and control characters
-    let sanitized = html.replace(/[\0-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-    
-    // Remove all script tags and their content
-    sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    
-    // Remove all style tags and their content
-    sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    
-    // Remove all event handlers (more comprehensive)
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '');
-    
-    // Remove javascript: and vbscript: protocols
-    sanitized = sanitized.replace(/javascript:/gi, '');
-    sanitized = sanitized.replace(/vbscript:/gi, '');
-    
-    // Remove data: URLs in src/href attributes (except images)
-    sanitized = sanitized.replace(/(<[^>]+)\s(src|href)\s*=\s*["']?\s*data:(?!image\/)[^"'\s>]*/gi, '$1');
-    
-    // Remove dangerous tags
-    const dangerousTags = [
-        'script', 'style', 'iframe', 'frame', 'frameset', 'object', 
-        'embed', 'applet', 'link', 'meta', 'base', 'form'
-    ];
-    
-    dangerousTags.forEach(tag => {
-        const regex = new RegExp(`<${tag}\\b[^<]*(?:(?!<\\/${tag}>)<[^<]*)*<\\/${tag}>|<${tag}\\b[^>]*\\/?>`, 'gi');
-        sanitized = sanitized.replace(regex, '');
+
+    // Remove null bytes and control characters first
+    let cleaned = html.replace(/[\0-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+    // DOMPurify configuration for email safety
+    // - ADD_TAGS: ['style'] keeps CSS styling intact for proper email rendering
+    // - FORBID_TAGS: blocks dangerous elements that could execute code or phish
+    // - FORBID_ATTR: blocks event handlers (DOMPurify blocks these by default too)
+    // - ALLOW_DATA_ATTR: false prevents data-* attributes that could be misused
+    const sanitized = DOMPurify.sanitize(cleaned, {
+        ADD_TAGS: ['style'],                    // Keep style tags for email CSS
+        FORBID_TAGS: [
+            'script', 'iframe', 'frame', 'frameset',
+            'object', 'embed', 'applet', 'form',
+            'input', 'button', 'select', 'textarea',
+            'link', 'meta', 'base'
+        ],
+        FORBID_ATTR: [
+            'onerror', 'onload', 'onclick', 'onmouseover',
+            'onfocus', 'onblur', 'onchange', 'onsubmit'
+        ],
+        ALLOW_DATA_ATTR: false,                 // No data-* attributes
+        ALLOW_ARIA_ATTR: true,                  // Keep accessibility attributes
+        KEEP_CONTENT: true                      // Keep text content when removing tags
     });
-    
-    // Remove dangerous attributes
-    const dangerousAttrs = [
-        'onload', 'onerror', 'onclick', 'onmouseover', 'onfocus', 'onblur',
-        'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onkeypress',
-        'onmouseout', 'onmouseenter', 'onmouseleave', 'onmousemove',
-        'ondblclick', 'oncontextmenu', 'onwheel', 'ondrag', 'ondrop',
-        'oncopy', 'oncut', 'onpaste'
-    ];
-    
-    dangerousAttrs.forEach(attr => {
-        const regex = new RegExp(`\\s*${attr}\\s*=\\s*["'][^"']*["']`, 'gi');
-        sanitized = sanitized.replace(regex, '');
-    });
-    
-    // Clean up any broken tags
-    sanitized = sanitized.replace(/<[^>]*$/g, '');
-    
+
     // Normalize Unicode to prevent homograph attacks
-    sanitized = sanitized.normalize('NFC');
-    
+    const normalized = sanitized.normalize('NFC');
+
     // Limit length
-    return sanitized.substring(0, maxLength);
+    return normalized.substring(0, maxLength);
 }
 
 // Generate UUID v4

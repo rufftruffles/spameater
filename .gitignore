@@ -45,3 +45,6 @@ docker/build.log
 # Claude Code
 .claude/
 CLAUDE.md
+
+# Development mockups
+mockups/

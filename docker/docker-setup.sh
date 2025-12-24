@@ -40,7 +40,7 @@ mkdir -p /tmp/npm-cache
 
 # Install for Haraka
 cd $INSTALL_DIR/haraka
-npm install sqlite3 --cache /tmp/npm-cache || exit 1
+npm install sqlite3 isomorphic-dompurify --cache /tmp/npm-cache || exit 1
 
 # Install for API server
 cd $INSTALL_DIR
