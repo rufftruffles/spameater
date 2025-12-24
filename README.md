@@ -20,9 +20,6 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
 
 ## Screenshots
 
-<details>
-<summary><b>Click to view screenshots</b></summary>
-<br>
 <div align="center">
   <img src="screenshots/1.png" alt="SpamEater Landing Page" width="600">
   <br>
@@ -36,7 +33,6 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
   <br>
   <em>View email details with one-click deletion</em>
 </div>
-</details>
 
 ## Features
 
