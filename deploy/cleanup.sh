@@ -158,26 +158,26 @@ if [[ -d "$DATA_DIR" ]]; then
                 security_log "Suspicious filename detected: $json_file"
                 log "Removing invalid filename: $json_file"
                 rm -f "$json_file"
-                ((json_cleaned++))
-                ((suspicious_files++))
+                ((json_cleaned++)) || true
+                ((suspicious_files++)) || true
                 continue
             fi
-            
+
             # Security: Check for path traversal attempts
             if [[ "$filename" =~ \.\. ]]; then
                 security_log "Path traversal attempt in filename: $json_file"
                 log "Removing dangerous filename: $json_file"
                 rm -f "$json_file"
-                ((json_cleaned++))
-                ((suspicious_files++))
+                ((json_cleaned++)) || true
+                ((suspicious_files++)) || true
                 continue
             fi
-            
+
             # Check if prefix exists in database
             if ! echo "$valid_prefixes" | grep -q "^$filename$"; then
                 log "Removing orphaned JSON: $json_file"
                 rm -f "$json_file"
-                ((json_cleaned++))
+                ((json_cleaned++)) || true
             fi
         fi
     done
