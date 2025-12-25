@@ -105,7 +105,7 @@ DELETE FROM emails WHERE inbox_id NOT IN (SELECT id FROM inboxes);
 DELETE FROM emails WHERE id IN (
     SELECT e1.id FROM emails e1
     JOIN (
-        SELECT inbox_id, id, 
+        SELECT inbox_id, id,
                ROW_NUMBER() OVER (PARTITION BY inbox_id ORDER BY received_at DESC) as rn
         FROM emails
     ) e2 ON e1.id = e2.id
@@ -113,7 +113,7 @@ DELETE FROM emails WHERE id IN (
 );
 
 -- Clean up old security events (keep 7 days)
-DELETE FROM security_events 
+DELETE FROM security_events
 WHERE timestamp < strftime('%s', 'now', '-7 days');
 
 -- Count after cleanup
@@ -121,11 +121,11 @@ SELECT 'Emails after cleanup: ' || COUNT(*) FROM emails;
 SELECT 'Inboxes after cleanup: ' || COUNT(*) FROM inboxes;
 SELECT 'Security events: ' || COUNT(*) FROM security_events;
 
--- Optimize database
+COMMIT;
+
+-- Optimize database (VACUUM must be outside transaction)
 VACUUM;
 ANALYZE;
-
-COMMIT;
 EOF
 )
 
