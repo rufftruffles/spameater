@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS security_events (
     ip_address TEXT,                        -- Source IP if applicable
     user_agent TEXT,                        -- User agent if applicable
     timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    CHECK(event_type IN ('rate_limit', 'suspicious_pattern', 'auth_failure', 'invalid_input', 'enumeration_attempt'))
+    CHECK(event_type IN ('rate_limit', 'suspicious_pattern', 'auth_failure', 'invalid_input', 'enumeration_attempt', 'expired_inbox'))
 );
 
 -- Index for security event queries
