@@ -756,8 +756,7 @@ class SpamEater {
             color: #aaa !important;
         }
         table { border-collapse: collapse; width: 100%; background: transparent !important; }
-        td, th { border: 1px solid #333 !important; padding: 8px; color: #e0e0e0 !important; }
-        hr { display: none !important; }
+        td, th { border: none !important; padding: 8px; color: #e0e0e0 !important; }
     </style>
 </head>
 <body>${sanitizedHtml}</body>
