@@ -808,6 +808,7 @@ class SpamEater {
         if (modalOverlay) {
             modalOverlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            document.body.classList.add('modal-open');
         }
     }
 
@@ -819,6 +820,7 @@ class SpamEater {
         if (modalOverlay) {
             modalOverlay.style.display = 'none';
             document.body.style.overflow = 'auto';
+            document.body.classList.remove('modal-open');
         }
 
         // Clear iframe content

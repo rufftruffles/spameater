@@ -81,6 +81,11 @@ body::before {
     z-index: 1000;
 }
 
+/* Hide scanlines when email modal is open - they bleed through onto light email content */
+body.modal-open::before {
+    display: none;
+}
+
 /* Glow orbs background - Orange top right */
 body::after {
     content: '';
