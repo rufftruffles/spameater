@@ -1,0 +1,9 @@
+Top stories this week
+
+1. SQLite turns 25: a retrospective
+   https://example.org/sqlite-25
+
+2. Show HN: I built a mail server in a weekend
+   https://example.org/weekend-smtp
+
+Reply STOP to unsubscribe. <this bracket should render literally>

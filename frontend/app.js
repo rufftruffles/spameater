@@ -1,6 +1,15 @@
 // SpamEater Frontend Application - Security Enhanced
 // Secure, minimal JavaScript for email management
 
+// Shown in place of a remote image until the reader loads images for the email
+const BLOCKED_IMAGE_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90" viewBox="0 0 160 90">' +
+    '<rect x="0.5" y="0.5" width="159" height="89" fill="#0e120c" stroke="#2a331f"/>' +
+    '<path d="M62 32 h36 v26 h-36 z M62 50 l10-9 8 7 7-6 11 8" fill="none" stroke="#4d5947" stroke-width="2"/>' +
+    '<circle cx="72" cy="39" r="2.5" fill="#4d5947"/>' +
+    '</svg>'
+);
+
 class SpamEater {
     constructor() {
         this.currentEmail = null;
@@ -145,6 +154,14 @@ class SpamEater {
         // Headers toggle
         const toggleHeaders = document.getElementById('toggleHeaders');
         toggleHeaders?.addEventListener('click', () => this.toggleHeaders());
+
+        const loadImagesBtn = document.getElementById('loadImagesBtn');
+        loadImagesBtn?.addEventListener('click', () => {
+            if (this.currentRenderData) {
+                this.renderEmailFrame(this.currentRenderData, true);
+                loadImagesBtn.hidden = true;
+            }
+        });
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -307,7 +324,232 @@ class SpamEater {
             KEEP_CONTENT: true                      // Keep text content when removing tags
         });
     }
-    
+
+    // Replace every color token inside a CSS value, keeping everything else
+    // (widths, keywords, url() parts) as written by the sender.
+    remapColorsInValue(value, role) {
+        const R = window.EmailRemap;
+        return value.replace(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|\b[a-zA-Z]{3,20}\b/g, (token) => {
+            const color = R.parseColor(token);
+            return color ? R.formatColor(R.remapColor(color, role)) : token;
+        });
+    }
+
+    roleForProperty(prop) {
+        if (prop === 'color' || prop === 'text-decoration-color') return 'text';
+        if (prop.indexOf('background') === 0) return 'background';
+        if (prop.indexOf('border') === 0 || prop.indexOf('outline') === 0) return 'background';
+        return null;
+    }
+
+    // Rewrite the color-bearing declarations of one CSSStyleDeclaration in place.
+    remapStyleDeclaration(style, state) {
+        const props = [];
+        for (let i = 0; i < style.length; i++) props.push(style[i]);
+        for (const prop of props) {
+            let value = style.getPropertyValue(prop);
+            const priority = style.getPropertyPriority(prop);
+            let changed = false;
+            if (!state.allowRemoteImages && /url\(\s*['"]?https?:/i.test(value)) {
+                const before = value;
+                value = value.replace(/url\(\s*['"]?https?:[^)]*\)/gi, 'none');
+                if (value !== before) {
+                    state.blockedImages++;
+                    changed = true;
+                }
+            }
+            if (!state.alreadyDark) {
+                const role = this.roleForProperty(prop);
+                if (role) {
+                    const remapped = this.remapColorsInValue(value, role);
+                    if (remapped !== value) {
+                        value = remapped;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) style.setProperty(prop, value, priority);
+        }
+    }
+
+    remapSheetRules(rules, state) {
+        for (const rule of rules) {
+            if (rule.style) this.remapStyleDeclaration(rule.style, state);
+            if (rule.cssRules) this.remapSheetRules(rule.cssRules, state);
+        }
+    }
+
+    // Best-effort effective background of the email, for dark-mail detection:
+    // body first, then the first few wrapper elements, else assume light.
+    resolveBodyBackground(doc) {
+        const R = window.EmailRemap;
+        const candidates = [doc.body];
+        let el = doc.body.firstElementChild;
+        for (let depth = 0; el && depth < 4; depth++) {
+            candidates.push(el);
+            el = el.firstElementChild;
+        }
+        for (const node of candidates) {
+            if (!node) continue;
+            const raw = node.style && (node.style.getPropertyValue('background-color') || node.style.getPropertyValue('background'));
+            const fromAttr = node.getAttribute && node.getAttribute('bgcolor');
+            for (const source of [raw, fromAttr]) {
+                if (!source) continue;
+                const color = R.parseColor(source.trim().split(/\s+/)[0]) || R.parseColor(source.trim());
+                if (color && color.a > 0) return color;
+            }
+        }
+        return null;
+    }
+
+    // Sanitize, then adapt the email's own colors to the dark surface and
+    // strip remote images. Returns { head, body, blockedImages }.
+    transformEmailDocument(html, options) {
+        const allowRemoteImages = !!(options && options.allowRemoteImages);
+        const clean = this.sanitizeHtml(html);
+        const doc = document.implementation.createHTMLDocument('email');
+        doc.documentElement.innerHTML = clean;
+
+        const background = this.resolveBodyBackground(doc);
+        const state = {
+            allowRemoteImages,
+            alreadyDark: background ? window.EmailRemap.isDarkColor(background) : false,
+            blockedImages: 0
+        };
+
+        // Legacy color attributes
+        for (const el of doc.querySelectorAll('[bgcolor]')) {
+            if (state.alreadyDark) break;
+            const remapped = this.remapColorsInValue(el.getAttribute('bgcolor'), 'background');
+            el.setAttribute('bgcolor', remapped);
+        }
+        if (!state.alreadyDark) {
+            for (const attr of ['text', 'link', 'alink', 'vlink']) {
+                const value = doc.body.getAttribute(attr);
+                if (value) doc.body.setAttribute(attr, this.remapColorsInValue(value, 'text'));
+            }
+        }
+
+        // Inline styles
+        for (const el of doc.querySelectorAll('[style]')) {
+            this.remapStyleDeclaration(el.style, state);
+        }
+
+        // <style> sheets (CSSOM is live in a detached createHTMLDocument)
+        for (const sheet of doc.styleSheets) {
+            try {
+                this.remapSheetRules(sheet.cssRules, state);
+                const rules = [];
+                for (const rule of sheet.cssRules) rules.push(rule.cssText);
+                if (sheet.ownerNode) sheet.ownerNode.textContent = rules.join('\n');
+            } catch (err) {
+                // Unreadable sheet: leave it as the sender wrote it
+            }
+        }
+
+        // Remote images
+        if (!allowRemoteImages) {
+            for (const img of doc.querySelectorAll('img')) {
+                const src = img.getAttribute('src') || '';
+                if (/^https?:/i.test(src.trim())) {
+                    state.blockedImages++;
+                    img.setAttribute('src', BLOCKED_IMAGE_PLACEHOLDER);
+                    img.removeAttribute('srcset');
+                    img.style.setProperty('max-width', '160px');
+                }
+            }
+            for (const el of doc.querySelectorAll('[background]')) {
+                const src = el.getAttribute('background') || '';
+                if (/^https?:/i.test(src.trim())) {
+                    state.blockedImages++;
+                    el.removeAttribute('background');
+                }
+            }
+        }
+
+        return {
+            head: doc.head.innerHTML,
+            body: doc.body.innerHTML,
+            blockedImages: state.blockedImages
+        };
+    }
+
+    renderEmailFrame(emailData, allowRemoteImages) {
+        const emailFrame = document.getElementById('emailFrame');
+        const loadImagesBtn = document.getElementById('loadImagesBtn');
+        if (!emailFrame) return;
+
+        let content;
+        let blockedImages = 0;
+
+        if (emailData.isHtml) {
+            const result = this.transformEmailDocument(emailData.content, { allowRemoteImages });
+            blockedImages = result.blockedImages;
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 16px;
+            background: #0c0f0b;
+            color: #d8e2d4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            -webkit-text-size-adjust: 100%;
+        }
+        a { color: #a3e635; }
+        img { max-width: 100%; height: auto; }
+        pre { white-space: pre-wrap; }
+    </style>
+    ${result.head}
+</head>
+<body>${result.body}</body>
+</html>`;
+        } else {
+            const escapedText = String(emailData.content)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #d8e2d4;
+            background: #0c0f0b;
+            margin: 0;
+            padding: 16px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>${escapedText}</body>
+</html>`;
+        }
+
+        emailFrame.srcdoc = content;
+
+        if (loadImagesBtn) {
+            if (blockedImages > 0 && !allowRemoteImages) {
+                loadImagesBtn.hidden = false;
+                loadImagesBtn.textContent = blockedImages === 1 ? 'Load 1 image' : `Load ${blockedImages} images`;
+            } else {
+                loadImagesBtn.hidden = true;
+            }
+        }
+    }
+
     async createEmail() {
         const input = document.getElementById('emailPrefix');
         const prefix = input?.value?.trim();
@@ -712,86 +954,10 @@ class SpamEater {
         if (modalSender) modalSender.textContent = emailData.senderName || emailData.sender;
         if (modalTime) modalTime.textContent = emailData.time;
 
-        // Display email content in sandboxed iframe for security
-        if (emailFrame) {
-            let content;
-            if (emailData.isHtml) {
-                // Sanitize HTML with DOMPurify before putting in iframe
-                const sanitizedHtml = this.sanitizeHtml(emailData.content);
-                // Wrap in a basic HTML document with dark theme styling
-                content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { box-sizing: border-box; }
-        html, body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-            font-size: 14px !important;
-            line-height: 1.6 !important;
-            color: #e0e0e0 !important;
-            background: #0a0a0f !important;
-            margin: 0 !important;
-            padding: 16px !important;
-            word-wrap: break-word;
-        }
-        /* Force light text on all elements */
-        div, span, p, td, th, li, label, h1, h2, h3, h4, h5, h6 {
-            color: #e0e0e0 !important;
-        }
-        a { color: #00ff88 !important; }
-        img { max-width: 100%; height: auto; }
-        pre, code {
-            background: #1a1a1f !important;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            color: #e0e0e0 !important;
-        }
-        blockquote {
-            border-left: 3px solid #00ff88 !important;
-            margin: 1em 0;
-            padding-left: 1em;
-            color: #aaa !important;
-        }
-        table { border-collapse: collapse; width: 100%; background: transparent !important; }
-        td, th { border: none !important; padding: 8px; color: #e0e0e0 !important; }
-    </style>
-</head>
-<body>${sanitizedHtml}</body>
-</html>`;
-            } else {
-                // Plain text - wrap in pre tag for proper formatting
-                const escapedText = emailData.content
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
-                content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #e0e0e0;
-            background: #0a0a0f;
-            margin: 0;
-            padding: 16px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-    </style>
-</head>
-<body>${escapedText}</body>
-</html>`;
-            }
-
-            // Use srcdoc for sandboxed content
-            emailFrame.srcdoc = content;
-        }
+        // Display email content in sandboxed iframe for security.
+        // Remote images stay blocked until the reader asks for them.
+        this.currentRenderData = emailData;
+        this.renderEmailFrame(emailData, false);
 
         // Reset headers display
         if (toggleText) toggleText.textContent = 'Show Headers';
