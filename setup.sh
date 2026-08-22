@@ -180,6 +180,16 @@ echo -e "\n${S_ARROW} Installing npm dependencies..."
 mkdir -p /tmp/spameater-npm-cache
 chown -R spameater:spameater /tmp/spameater-npm-cache
 
+# Apply the same dependency overrides as the repo manifest, so sqlite3's
+# build-tool chain resolves without known-vulnerable versions
+sudo -u spameater node -e '
+const fs = require("fs");
+const p = "/opt/spameater/haraka/package.json";
+const pkg = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, "utf8")) : {};
+pkg.overrides = Object.assign({}, pkg.overrides, { "node-gyp": "^11.0.0", "tar": "^7.5.22" });
+fs.writeFileSync(p, JSON.stringify(pkg, null, 2));
+' 2>/dev/null || true
+
 # Install for Haraka
 echo -n "   ├─ Haraka plugins: sqlite3 isomorphic-dompurify... "
 cd /opt/spameater/haraka
@@ -462,7 +472,7 @@ else
 fi
 echo "  ${C_DIM}secrets${C_RESET}        /opt/spameater/.env (mode 600)"
 echo ""
-echo "${S_WARN} IMPORTANT: Save the credentials above!"
+echo "${S_INFO} Secrets are generated, stored in /opt/spameater/.env, and never shown here."
 echo ""
 
 # Get server's public IP (try multiple methods)

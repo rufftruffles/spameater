@@ -221,6 +221,17 @@ Test message.
 QUIT
 ```
 
+### Test security (ModSecurity)
+
+Where the WAF is active, these return 403 Forbidden:
+
+```bash
+curl "https://your-domain.com/?test=<script>alert(1)</script>"
+curl "https://your-domain.com/../../etc/passwd"
+```
+
+ModSecurity packages are not available on every distribution (AlmaLinux 10 at the time of writing); the installer says so and continues. The application-level protections (CSRF, delete tokens, input validation, sanitization, rate limits) do not depend on it.
+
 ## Security notes
 
 - Delete operations require a CSRF token and a rotating HMAC delete token, compared in constant time.
