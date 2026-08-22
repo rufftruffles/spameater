@@ -37,6 +37,20 @@
             text-transform: uppercase;
             color: #7d8a76;
         }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                background-color: #f4f6f1;
+                background-image:
+                    linear-gradient(#eaeee5 1px, transparent 1px),
+                    linear-gradient(90deg, #eaeee5 1px, transparent 1px);
+                color: #2a332a;
+            }
+            .error-container { border-color: #c3cdb8; background: #fcfdfb; }
+            h1 { color: #93700a; }
+            p { color: #5c6a56; }
+            a { color: #4d7c0f; }
+        }
     </style>
 </head>
 <body>

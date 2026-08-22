@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.0 — 2026-08-22
+
+- Dark/light theme toggle. Defaults to the OS preference, remembers an explicit choice, and applies before first paint (no flash; the init script is a separate file because the CSP forbids inline scripts).
+- Light "Terminal Ledger" palette: paper tones, the accent darkened to olive for contrast, every component themed through the existing tokens.
+- The email viewer adapts per theme: in light mode mail renders exactly as the sender designed it (no color remap); in dark mode the v4 adaptation applies. The contrast guard, image placeholder, and frame styles follow the active theme, and an open email re-renders on toggle.
+- Error pages follow the OS preference.
+
 ## 4.0.1 — 2026-08-22
 
 - ModSecurity works on Enterprise Linux 10: when EPEL has no nginx connector, the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx).

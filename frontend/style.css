@@ -33,8 +33,28 @@
     --accent-soft: #2c3c1c;
     --warn: #e6c229;
     --danger: #e65f45;
+    --overlay: rgba(4, 6, 4, 0.82);
     --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
     --font-sans: 'Space Grotesk', system-ui, sans-serif;
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    --bg: #f4f6f1;
+    --surface: #fcfdfb;
+    --surface-2: #f8faf4;
+    --line: #dde4d6;
+    --line-strong: #c3cdb8;
+    --text: #171d15;
+    --text-body: #2a332a;
+    --text-dim: #5c6a56;
+    --text-faint: #8b9784;
+    --accent: #4d7c0f;
+    --accent-soft: #c7dba2;
+    --warn: #93700a;
+    --danger: #b3341f;
+    --overlay: rgba(30, 40, 24, 0.45);
+    color-scheme: light;
 }
 
 * {
@@ -576,7 +596,7 @@ button {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(4, 6, 4, 0.82);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -761,7 +781,7 @@ button {
 .confirm-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(4, 6, 4, 0.82);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -978,4 +998,43 @@ button {
     .email-frame {
         min-height: 260px;
     }
+}
+
+/* ---------- Theme toggle ---------- */
+
+.theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    color: var(--text-dim);
+}
+
+.theme-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* Show the icon of the theme a click switches to */
+.theme-toggle .icon-sun {
+    display: block;
+}
+
+.theme-toggle .icon-moon {
+    display: none;
+}
+
+:root[data-theme="light"] .theme-toggle .icon-sun {
+    display: none;
+}
+
+:root[data-theme="light"] .theme-toggle .icon-moon {
+    display: block;
 }

@@ -2,13 +2,18 @@
 // Secure, minimal JavaScript for email management
 
 // Shown in place of a remote image until the reader loads images for the email
-const BLOCKED_IMAGE_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90" viewBox="0 0 160 90">' +
-    '<rect x="0.5" y="0.5" width="159" height="89" fill="#0e120c" stroke="#2a331f"/>' +
-    '<path d="M62 32 h36 v26 h-36 z M62 50 l10-9 8 7 7-6 11 8" fill="none" stroke="#4d5947" stroke-width="2"/>' +
-    '<circle cx="72" cy="39" r="2.5" fill="#4d5947"/>' +
-    '</svg>'
-);
+function blockedImagePlaceholder(light) {
+    const fill = light ? '#f3f4f6' : '#0e120c';
+    const stroke = light ? '#d1d5db' : '#2a331f';
+    const glyph = light ? '#9ca3af' : '#4d5947';
+    return 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90" viewBox="0 0 160 90">' +
+        `<rect x="0.5" y="0.5" width="159" height="89" fill="${fill}" stroke="${stroke}"/>` +
+        `<path d="M62 32 h36 v26 h-36 z M62 50 l10-9 8 7 7-6 11 8" fill="none" stroke="${glyph}" stroke-width="2"/>` +
+        `<circle cx="72" cy="39" r="2.5" fill="${glyph}"/>` +
+        '</svg>'
+    );
+}
 
 class SpamEater {
     constructor() {
@@ -28,6 +33,7 @@ class SpamEater {
         this.confirmReturnFocus = null;
         this.ttlTimer = null; // Countdown interval
         this.inboxExpiresAt = null; // ms epoch of inbox expiry
+        this.currentImagesAllowed = false; // Load-images state of the open email
 
         this.init();
     }
@@ -167,6 +173,10 @@ class SpamEater {
                 loadImagesBtn.hidden = true;
             }
         });
+
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', () => this.toggleTheme());
 
         // Copy current address
         const copyAddressBtn = document.getElementById('copyAddressBtn');
@@ -493,7 +503,10 @@ class SpamEater {
         const background = this.resolveBodyBackground(doc);
         const state = {
             allowRemoteImages,
-            alreadyDark: background ? window.EmailRemap.isDarkColor(background) : false,
+            // alreadyDark doubles as "skip color remap": in the light theme
+            // mail renders as the sender designed it, no adaptation needed
+            alreadyDark: this.currentTheme() === 'light'
+                || (background ? window.EmailRemap.isDarkColor(background) : false),
             blockedImages: 0
         };
 
@@ -553,11 +566,13 @@ class SpamEater {
             a.setAttribute('rel', 'noopener noreferrer');
         }
 
+        const placeholder = blockedImagePlaceholder(this.currentTheme() === 'light');
+
         // cid: images reference MIME attachments that are not stored;
         // show the placeholder instead of a broken icon + CSP error
         for (const img of doc.querySelectorAll('img')) {
             if (/^cid:/i.test((img.getAttribute('src') || '').trim())) {
-                img.setAttribute('src', BLOCKED_IMAGE_PLACEHOLDER);
+                img.setAttribute('src', placeholder);
                 img.style.setProperty('max-width', '160px');
             }
         }
@@ -572,7 +587,7 @@ class SpamEater {
                 const remoteSrcset = srcset && /(^|[\s,])(https?:)?\/\//i.test(srcset);
                 if (remoteSrc || remoteSrcset) {
                     state.blockedImages++;
-                    img.setAttribute('src', BLOCKED_IMAGE_PLACEHOLDER);
+                    img.setAttribute('src', placeholder);
                     img.style.setProperty('max-width', '160px');
                 }
                 // srcset can name remote candidates on its own; drop it always
@@ -605,6 +620,12 @@ class SpamEater {
         const loadImagesBtn = document.getElementById('loadImagesBtn');
         if (!emailFrame) return;
 
+        this.currentImagesAllowed = !!allowRemoteImages;
+        const light = this.currentTheme() === 'light';
+        const frame = light
+            ? { scheme: 'light', bg: '#ffffff', text: '#1f2937', link: '#4d7c0f', rule: '#d1d5db' }
+            : { scheme: 'dark', bg: '#0c0f0b', text: '#d8e2d4', link: '#a3e635', rule: '#3a4535' };
+
         let content;
         let blockedImages = 0;
 
@@ -619,23 +640,23 @@ class SpamEater {
     <meta name="referrer" content="no-referrer">
     <base target="_blank">
     <style>
-        :root { color-scheme: dark; }
+        :root { color-scheme: ${frame.scheme}; }
         html, body {
             margin: 0;
             padding: 16px;
-            background: #0c0f0b;
-            color: #d8e2d4;
+            background: ${frame.bg};
+            color: ${frame.text};
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 14px;
             line-height: 1.6;
             word-wrap: break-word;
             -webkit-text-size-adjust: 100%;
         }
-        a { color: #a3e635; }
+        a { color: ${frame.link}; }
         img { max-width: 100%; height: auto; }
         pre { white-space: pre-wrap; }
-        /* Unstyled dividers get a subtle line instead of the UA's bright one */
-        hr { border: none; border-top: 1px solid #3a4535; }
+        /* Unstyled dividers get a subtle line instead of the UA default */
+        hr { border: none; border-top: 1px solid ${frame.rule}; }
     </style>
     ${result.head}
 </head>
@@ -652,17 +673,19 @@ class SpamEater {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        :root { color-scheme: ${frame.scheme}; }
         body {
             font-family: 'JetBrains Mono', ui-monospace, monospace;
             font-size: 14px;
             line-height: 1.6;
-            color: #d8e2d4;
-            background: #0c0f0b;
+            color: ${frame.text};
+            background: ${frame.bg};
             margin: 0;
             padding: 16px;
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        a { color: ${frame.link}; }
     </style>
 </head>
 <body>${escapedText}</body>
@@ -699,7 +722,7 @@ class SpamEater {
         if (!doc || !doc.body || !window.EmailRemap) return;
         const R = window.EmailRemap;
         const win = doc.defaultView;
-        const frameBg = R.parseColor('#0c0f0b');
+        const frameBg = R.parseColor(this.currentTheme() === 'light' ? '#ffffff' : '#0c0f0b');
 
         const effectiveBackground = (el) => {
             let node = el;
@@ -731,6 +754,26 @@ class SpamEater {
                 R.formatColor({ h: color.h, s: Math.min(color.s, 0.85), l: fixedL, a: color.a }),
                 'important'
             );
+        }
+    }
+
+    // Current theme, set on <html> by theme-init.js before first paint
+    currentTheme() {
+        return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    }
+
+    toggleTheme() {
+        const next = this.currentTheme() === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        try {
+            localStorage.setItem('spameater_theme', next);
+        } catch (err) {
+            // Preference just won't persist; the page still switches
+        }
+        // Re-render an open email: the remap direction depends on the theme
+        const modalOverlay = document.getElementById('modalOverlay');
+        if (this.currentRenderData && modalOverlay && modalOverlay.style.display !== 'none') {
+            this.renderEmailFrame(this.currentRenderData, this.currentImagesAllowed);
         }
     }
 

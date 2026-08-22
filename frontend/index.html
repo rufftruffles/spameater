@@ -27,6 +27,9 @@
     <!-- Favicon: Terminal Ledger cube -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0c09'/%3E%3Cpath d='M7 11 L16 6.5 L25 11 L25 21 L16 25.5 L7 21 Z M7 11 L16 15.5 L25 11 M16 15.5 L16 25.5' fill='none' stroke='%23a3e635' stroke-width='2'/%3E%3C/svg%3E">
 
+    <!-- Theme attribute must be set before first paint -->
+    <script src="theme-init.js"></script>
+
     <!-- Styles (fonts are self-hosted, declared in style.css) -->
     <link rel="stylesheet" href="style.css">
 
@@ -39,6 +42,12 @@
     <link rel="preload" href="fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
+    <!-- Theme toggle -->
+    <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch between dark and light theme">
+        <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2 v2.5 M12 19.5 V22 M2 12 h2.5 M19.5 12 H22 M4.9 4.9 l1.8 1.8 M17.3 17.3 l1.8 1.8 M19.1 4.9 l-1.8 1.8 M6.7 17.3 l-1.8 1.8"></path></svg>
+        <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.5 14.5 A8.5 8.5 0 1 1 9.5 3.5 A7 7 0 0 0 20.5 14.5 Z"></path></svg>
+    </button>
+
     <!-- Main Container -->
     <div class="container">
         <!-- Email Creation Section -->
