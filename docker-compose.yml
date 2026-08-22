@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ============================================
 # SpamEater - Disposable Email Server
 # ============================================
@@ -55,12 +53,15 @@ services:
       # Leave empty for auto: admin@example.com
       ADMIN_EMAIL: ""
       
-      # ============ AUTO-GENERATED ============
-      # Security secrets - leave empty for auto-generation (recommended)
-      DELETE_TOKEN_SECRET: ""
-      CSRF_SECRET: ""
-      ENCRYPTION_KEY: ""
-      
+      # ============ SECRETS ============
+      # Generated on first start and persisted on the data volume, so
+      # upgrades and recreates keep the same encryption key.
+      # To supply your own instead, set them here (32+ characters each):
+      # DELETE_TOKEN_SECRET: ""
+      # CSRF_SECRET: ""
+      # ENCRYPTION_KEY: ""
+
+
       # ============ ADVANCED ============
       # Disable SSL (for testing only, set to "true")
       DISABLE_SSL: "false"

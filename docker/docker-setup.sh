@@ -21,7 +21,7 @@ npm install -g npm@latest || echo "npm update failed, continuing"
 
 # Install Haraka globally
 echo "📦 Installing Haraka..."
-npm install -g Haraka || exit 1
+npm install -g Haraka@3.3.3 || exit 1
 
 # Verify Haraka installation
 which haraka || exit 1
@@ -40,11 +40,11 @@ mkdir -p /tmp/npm-cache
 
 # Install for Haraka
 cd $INSTALL_DIR/haraka
-npm install sqlite3 isomorphic-dompurify --cache /tmp/npm-cache || exit 1
+npm install sqlite3@6.0.1 isomorphic-dompurify@3.22.0 --cache /tmp/npm-cache || exit 1
 
 # Install for API server
 cd $INSTALL_DIR
-npm install express helmet express-rate-limit sqlite3 --cache /tmp/npm-cache || exit 1
+npm install express@5.2.1 helmet@8.3.0 express-rate-limit@8.6.2 sqlite3@6.0.1 --cache /tmp/npm-cache || exit 1
 
 # Copy application files
 echo "📄 Copying application files..."

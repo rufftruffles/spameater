@@ -18,31 +18,69 @@ fi
 WEB_DOMAIN="${WEB_DOMAIN:-$EMAIL_DOMAIN}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@$EMAIL_DOMAIN}"
 
-# Generate secrets if not provided
+# Secrets live on the data volume so container recreation reuses them.
+# Losing ENCRYPTION_KEY makes every stored email permanently unreadable.
+# Order: explicit environment variables win, then the volume file, then
+# generation (first start only).
+PERSISTED_ENV=/opt/spameater/data/.env
+LEGACY_ENV=/opt/spameater/.env
+
+mkdir -p /opt/spameater/data
+
+# Restart-in-place migration from pre-v4 containers that only had the
+# non-volume file. On a recreate the legacy file is already gone.
+if [ -z "$ENCRYPTION_KEY" ] && [ ! -f "$PERSISTED_ENV" ] && [ -f "$LEGACY_ENV" ]; then
+    cp "$LEGACY_ENV" "$PERSISTED_ENV"
+    echo "🔐 Migrated existing secrets to the data volume"
+fi
+
+if [ -f "$PERSISTED_ENV" ]; then
+    # Load persisted secrets, but explicitly-set environment variables win
+    ENV_DELETE_TOKEN_SECRET="$DELETE_TOKEN_SECRET"
+    ENV_CSRF_SECRET="$CSRF_SECRET"
+    ENV_ENCRYPTION_KEY="$ENCRYPTION_KEY"
+    # shellcheck disable=SC1090
+    . "$PERSISTED_ENV"
+    if [ -n "$ENV_DELETE_TOKEN_SECRET" ]; then DELETE_TOKEN_SECRET="$ENV_DELETE_TOKEN_SECRET"; fi
+    if [ -n "$ENV_CSRF_SECRET" ]; then CSRF_SECRET="$ENV_CSRF_SECRET"; fi
+    if [ -n "$ENV_ENCRYPTION_KEY" ]; then ENCRYPTION_KEY="$ENV_ENCRYPTION_KEY"; fi
+    echo "🔐 Loaded secrets from the data volume"
+fi
+
+# openssl rand -hex 16 always yields exactly 32 chars of full entropy
+# (the old base64|tr|cut pipeline could come up short after stripping)
 if [ -z "$DELETE_TOKEN_SECRET" ]; then
-    DELETE_TOKEN_SECRET=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    DELETE_TOKEN_SECRET=$(openssl rand -hex 16)
     echo "🔐 Generated DELETE_TOKEN_SECRET"
 fi
 
 if [ -z "$CSRF_SECRET" ]; then
-    CSRF_SECRET=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    CSRF_SECRET=$(openssl rand -hex 16)
     echo "🔐 Generated CSRF_SECRET"
 fi
 
 if [ -z "$ENCRYPTION_KEY" ]; then
-    ENCRYPTION_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    ENCRYPTION_KEY=$(openssl rand -hex 16)
     echo "🔐 Generated ENCRYPTION_KEY"
 fi
 
-# Create .env file
-cat > /opt/spameater/.env << EOF
+# Persist to the volume, mirror to the app-visible path
+cat > "$PERSISTED_ENV" << EOF
+DELETE_TOKEN_SECRET=$DELETE_TOKEN_SECRET
+CSRF_SECRET=$CSRF_SECRET
+ENCRYPTION_KEY=$ENCRYPTION_KEY
+EOF
+chown spameater:spameater "$PERSISTED_ENV"
+chmod 600 "$PERSISTED_ENV"
+
+cat > "$LEGACY_ENV" << EOF
 DELETE_TOKEN_SECRET=$DELETE_TOKEN_SECRET
 CSRF_SECRET=$CSRF_SECRET
 ENCRYPTION_KEY=$ENCRYPTION_KEY
 NODE_ENV=production
 EOF
-chown spameater:spameater /opt/spameater/.env
-chmod 600 /opt/spameater/.env
+chown spameater:spameater "$LEGACY_ENV"
+chmod 600 "$LEGACY_ENV"
 
 echo "✅ Environment configured"
 
@@ -251,7 +289,8 @@ export CSRF_SECRET
 export ENCRYPTION_KEY
 export NODE_ENV=production
 
-# Make sure the .env file can be read by spameater user
-chmod 644 /opt/spameater/.env
+# Secrets stay owner-readable only; services get them via exported env
+chown spameater:spameater /opt/spameater/.env
+chmod 600 /opt/spameater/.env
 
 exec supervisord -c /etc/supervisord.conf
