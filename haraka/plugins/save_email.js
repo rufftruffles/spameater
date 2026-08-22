@@ -119,7 +119,9 @@ function sanitizeText(text, maxLength = 50000) {
 
 // SECURITY FIX: HTML sanitization using DOMPurify
 // Keeps <style> tags for proper email rendering, removes dangerous elements
-function sanitizeHtml(html, maxLength = 500000) {
+// Length cap leaves room for embedded inline images (base64 expands the
+// 1MB SMTP message cap by ~1.37x at most)
+function sanitizeHtml(html, maxLength = 1500000) {
     if (!html) return '';
 
     // Remove null bytes and control characters first
@@ -449,9 +451,59 @@ exports.hook_queue = function(next, connection) {
     return next(OK);
 };
 
+// Inline image capture limits. Raster formats only (no SVG: it can carry
+// script and there is no reason a signature logo needs it).
+const INLINE_IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp|bmp)\s*(;|$)/i;
+const MAX_INLINE_IMAGE_BYTES = 200 * 1024;
+const MAX_INLINE_TOTAL_BYTES = 400 * 1024;
+
+// Replace cid: references with data: URIs for captured inline images.
+// Unmatched references are left alone; the frontend shows a placeholder.
+function embedInlineImages(html, inlineImages) {
+    if (!html || !inlineImages || Object.keys(inlineImages).length === 0) return html;
+    return html.replace(/(["'(])cid:([^"'()\s>]+)/gi, (match, lead, cid) => {
+        const key = Object.keys(inlineImages).find(k => k.toLowerCase() === cid.toLowerCase());
+        if (!key) return match;
+        const image = inlineImages[key];
+        return `${lead}data:${image.contentType};base64,${image.base64}`;
+    });
+}
+exports._embedInlineImages = embedInlineImages;
+
 // Hook: Process data (this is where we can access the email body)
 exports.hook_data = function(next, connection) {
-    connection.transaction.parse_body = true;
+    const transaction = connection.transaction;
+    transaction.parse_body = true;
+    transaction.notes.inline_images = {};
+    transaction.notes.inline_images_bytes = 0;
+
+    // Attachments stream through Haraka without being kept; buffer just the
+    // small inline raster images that the HTML can reference by Content-ID.
+    transaction.attachment_hooks((contentType, filename, body, stream) => {
+        const cid = body && body.header ? String(body.header.get('content-id') || '').trim() : '';
+        if (!INLINE_IMAGE_TYPES.test(contentType || '') || !cid) {
+            stream.resume();
+            return;
+        }
+        const chunks = [];
+        let size = 0;
+        stream.on('data', (chunk) => {
+            size += chunk.length;
+            if (size <= MAX_INLINE_IMAGE_BYTES) chunks.push(chunk);
+        });
+        stream.on('end', () => {
+            if (size === 0 || size > MAX_INLINE_IMAGE_BYTES) return;
+            if (transaction.notes.inline_images_bytes + size > MAX_INLINE_TOTAL_BYTES) return;
+            const key = cid.replace(/^</, '').replace(/>$/, '');
+            transaction.notes.inline_images[key] = {
+                contentType: (contentType.split(';')[0] || '').trim().toLowerCase(),
+                base64: Buffer.concat(chunks).toString('base64')
+            };
+            transaction.notes.inline_images_bytes += size;
+        });
+        stream.on('error', () => {});
+    });
+
     return next();
 };
 
@@ -544,6 +596,9 @@ exports.hook_data_post = function(next, connection) {
         
         // Sanitize bodies
         bodyText = sanitizeText(bodyText);
+        // Embed captured inline images before sanitizing (sanitizer keeps
+        // data: URIs on images)
+        bodyHtml = embedInlineImages(bodyHtml, transaction.notes.inline_images);
         bodyHtml = sanitizeHtml(bodyHtml);
         
         // Calculate size
