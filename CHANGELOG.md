@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0.1 — 2026-08-22
+
+- ModSecurity works on Enterprise Linux 10: when EPEL has no nginx connector, the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx).
+- Fixed the WAF enable gates: dynamic modules never appear in `nginx -V` (the check now looks for the module file), and a malformed bracket skipped the post-SSL include step.
+- The ModSecurity audit log is created at install owned by the nginx worker; it was previously never written.
+- EPEL is installed in the dnf path (certbot and fail2ban need it on a minimal system); EL10 added to supported systems.
+- Install scripts restyled to the Terminal Ledger theme; the setup summary no longer prints secrets.
+- The Haraka-directory npm install carries the same dependency overrides as the repo manifest, clearing its audit warnings.
+- Delivery works on Haraka 3.3 (address API change; fresh installs pin 3.3.3).
+
 ## 4.0.0 — 2026-08-22
 
 ### Email ingestion
