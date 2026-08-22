@@ -85,6 +85,8 @@ if command -v dnf >/dev/null 2>&1; then
     echo "   Detected: RHEL/Fedora-based system (dnf)"
     echo -n "   ├─ Updating package cache... "
     dnf update -y -q && echo "${S_OK}"
+    echo -n "   ├─ Installing EPEL repository (certbot, fail2ban)... "
+    dnf install -y epel-release -q 2>/dev/null && echo "${S_OK}" || echo "${S_WARN} not available (assuming EPEL is already configured)"
     echo -n "   ├─ Adding Node.js 22 repository... "
     curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && echo "${S_OK}"
     echo -n "   ├─ Installing: nodejs nginx sqlite certbot fail2ban firewalld... "

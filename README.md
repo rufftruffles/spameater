@@ -144,7 +144,7 @@ Upgrading from v3: if the old container is still running, restart in place once 
 <summary><b>Native installation (advanced)</b></summary>
 
 ### Supported systems
-- AlmaLinux 9 / RHEL 9 / Rocky Linux 9
+- AlmaLinux / RHEL / Rocky Linux 9 and 10
 - Ubuntu 22.04+ / Debian 11+
 
 ### Installation
