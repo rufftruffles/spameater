@@ -546,6 +546,13 @@ class SpamEater {
             }
         }
 
+        // Links open in a new tab: the sandbox rightly refuses in-frame
+        // navigation, and noopener/noreferrer keeps the new tab detached
+        for (const a of doc.querySelectorAll('a[href]')) {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+        }
+
         // cid: images reference MIME attachments that are not stored;
         // show the placeholder instead of a broken icon + CSP error
         for (const img of doc.querySelectorAll('img')) {
@@ -609,6 +616,8 @@ class SpamEater {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <base target="_blank">
     <style>
         :root { color-scheme: dark; }
         html, body {

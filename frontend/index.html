@@ -199,11 +199,13 @@
                     </div>
                     <!-- Sandboxed iframe for secure email rendering.
                          Invariant: sandbox stays allow-same-origin WITHOUT allow-scripts.
-                         The pairing of both would let email content escape the sandbox. -->
+                         The pairing of both would let email content escape the sandbox.
+                         allow-popups (+escape) only lets links open in a new tab,
+                         which then runs unsandboxed with rel=noopener. -->
                     <iframe
                         id="emailFrame"
                         class="email-frame"
-                        sandbox="allow-same-origin"
+                        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                         title="Email content"
                     ></iframe>
                     <div class="headers-toggle">
