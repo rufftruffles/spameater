@@ -538,6 +538,15 @@ class SpamEater {
             }
         }
 
+        // cid: images reference MIME attachments that are not stored;
+        // show the placeholder instead of a broken icon + CSP error
+        for (const img of doc.querySelectorAll('img')) {
+            if (/^cid:/i.test((img.getAttribute('src') || '').trim())) {
+                img.setAttribute('src', BLOCKED_IMAGE_PLACEHOLDER);
+                img.style.setProperty('max-width', '160px');
+            }
+        }
+
         // Remote images: absolute and protocol-relative URLs, in src, srcset,
         // and legacy background attributes
         if (!allowRemoteImages) {
@@ -593,6 +602,7 @@ class SpamEater {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        :root { color-scheme: dark; }
         html, body {
             margin: 0;
             padding: 16px;
@@ -607,6 +617,8 @@ class SpamEater {
         a { color: #a3e635; }
         img { max-width: 100%; height: auto; }
         pre { white-space: pre-wrap; }
+        /* Unstyled dividers get a subtle line instead of the UA's bright one */
+        hr { border: none; border-top: 1px solid #3a4535; }
     </style>
     ${result.head}
 </head>
