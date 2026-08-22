@@ -497,16 +497,24 @@ class SpamEater {
             blockedImages: 0
         };
 
-        // Legacy color attributes
-        for (const el of doc.querySelectorAll('[bgcolor]')) {
-            if (state.alreadyDark) break;
-            const remapped = this.remapColorsInValue(el.getAttribute('bgcolor'), 'background');
-            el.setAttribute('bgcolor', remapped);
-        }
+        // Legacy color attributes. These only understand hex/named colors,
+        // so the remapped value is written as hex.
+        const R = window.EmailRemap;
+        const remapAttrColor = (value, role) => {
+            const color = R.parseColor(String(value).trim());
+            return color ? R.formatHexColor(R.remapColor(color, role)) : value;
+        };
         if (!state.alreadyDark) {
+            for (const el of doc.querySelectorAll('[bgcolor]')) {
+                el.setAttribute('bgcolor', remapAttrColor(el.getAttribute('bgcolor'), 'background'));
+            }
+            // <font color="..."> (Outlook forward headers use this)
+            for (const el of doc.querySelectorAll('font[color]')) {
+                el.setAttribute('color', remapAttrColor(el.getAttribute('color'), 'text'));
+            }
             for (const attr of ['text', 'link', 'alink', 'vlink']) {
                 const value = doc.body.getAttribute(attr);
-                if (value) doc.body.setAttribute(attr, this.remapColorsInValue(value, 'text'));
+                if (value) doc.body.setAttribute(attr, remapAttrColor(value, 'text'));
             }
         }
 
@@ -653,6 +661,16 @@ class SpamEater {
         }
 
         emailFrame.srcdoc = content;
+        // Safety net after the source-level remap: verify computed contrast
+        // in the rendered document, catching any color vector the transform
+        // did not recognize (system colors, unusual attributes, inheritance).
+        emailFrame.onload = () => {
+            try {
+                this.guardFrameContrast(emailFrame.contentDocument);
+            } catch (err) {
+                // Guard is best-effort; the frame stays as transformed
+            }
+        };
 
         if (loadImagesBtn) {
             if (blockedImages > 0 && !allowRemoteImages) {
@@ -661,6 +679,49 @@ class SpamEater {
             } else {
                 loadImagesBtn.hidden = true;
             }
+        }
+    }
+
+    // Walk the rendered email and fix any text whose computed color has no
+    // contrast against its effective background. This is layout-aware (runs
+    // in the live frame), so it catches everything the source transform
+    // cannot see: system color keywords, inherited colors, odd attributes.
+    guardFrameContrast(doc) {
+        if (!doc || !doc.body || !window.EmailRemap) return;
+        const R = window.EmailRemap;
+        const win = doc.defaultView;
+        const frameBg = R.parseColor('#0c0f0b');
+
+        const effectiveBackground = (el) => {
+            let node = el;
+            while (node && node.nodeType === 1) {
+                const bg = R.parseColor(win.getComputedStyle(node).backgroundColor);
+                if (bg && bg.a > 0.1) return bg;
+                node = node.parentElement;
+            }
+            return frameBg;
+        };
+
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        const seen = new Set();
+        let textNode;
+        while ((textNode = walker.nextNode())) {
+            if (!textNode.textContent.trim()) continue;
+            const el = textNode.parentElement;
+            if (!el || seen.has(el)) continue;
+            seen.add(el);
+            const color = R.parseColor(win.getComputedStyle(el).color);
+            if (!color || color.a === 0) continue;
+            const bg = effectiveBackground(el);
+            if (Math.abs(color.l - bg.l) >= 0.3) continue;
+            // Unreadable: push the text to the other side of its background,
+            // keeping hue so colored text stays colored
+            const fixedL = bg.l < 0.5 ? Math.max(0.78, 1 - color.l * 0.3) : Math.min(0.18, color.l * 0.3);
+            el.style.setProperty(
+                'color',
+                R.formatColor({ h: color.h, s: Math.min(color.s, 0.85), l: fixedL, a: color.a }),
+                'important'
+            );
         }
     }
 

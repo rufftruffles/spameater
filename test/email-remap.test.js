@@ -100,6 +100,19 @@ test('alpha preserved by remap', () => {
     assert.equal(out.a, 0.5);
 });
 
+test('formatHexColor round-trips', () => {
+    assert.equal(R.formatHexColor(R.parseColor('#ffffff')), '#ffffff');
+    assert.equal(R.formatHexColor(R.parseColor('#000000')), '#000000');
+    const back = R.parseColor(R.formatHexColor(R.parseColor('#cc0000')));
+    assert.ok(Math.abs(back.l - R.parseColor('#cc0000').l) < 0.01);
+    assert.ok(Math.abs(back.h - 0) < 1);
+});
+
+test('remapped black as attribute hex is light', () => {
+    const out = R.formatHexColor(R.remapColor(R.parseColor('#000000'), 'text'));
+    assert.ok(R.parseColor(out).l > 0.9, out);
+});
+
 test('isDarkColor threshold', () => {
     assert.equal(R.isDarkColor(R.parseColor('#111')), true);
     assert.equal(R.isDarkColor(R.parseColor('#eee')), false);

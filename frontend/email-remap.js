@@ -145,6 +145,34 @@ function isDarkColor(c) {
     return c.l < 0.5;
 }
 
+// Hex form for legacy HTML color attributes (bgcolor, font color, body
+// text/link), which ignore functional notations like hsla()
+function formatHexColor(c) {
+    const hueToRgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    };
+    let r;
+    let g;
+    let b;
+    if (c.s === 0) {
+        r = g = b = c.l;
+    } else {
+        const q = c.l < 0.5 ? c.l * (1 + c.s) : c.l + c.s - c.l * c.s;
+        const p = 2 * c.l - q;
+        const h = c.h / 360;
+        r = hueToRgb(p, q, h + 1 / 3);
+        g = hueToRgb(p, q, h);
+        b = hueToRgb(p, q, h - 1 / 3);
+    }
+    const toHex = (v) => Math.round(clamp(v, 0, 1) * 255).toString(16).padStart(2, '0');
+    return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
 // Background: light surfaces fold into a dark band (lightness order inverted,
 // so lighter inputs stay the "brighter" layer relative to each other in the
 // dark theme), dark surfaces pass through, the 0.35-0.5 band eases between.
@@ -168,7 +196,7 @@ function remapColor(c, role) {
     return { h: c.h, s: Math.min(c.s, 0.85), l: clamp(l, 0, 1), a: c.a };
 }
 
-const EmailRemap = { parseColor, formatColor, remapColor, isDarkColor };
+const EmailRemap = { parseColor, formatColor, formatHexColor, remapColor, isDarkColor };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = EmailRemap;
 if (typeof window !== 'undefined') window.EmailRemap = EmailRemap;
