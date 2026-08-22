@@ -16,9 +16,13 @@
     "express-rate-limit": "8.6.2",
     "helmet": "8.3.0",
     "isomorphic-dompurify": "3.22.0",
-    "sqlite3": "6.0.1"
+    "sqlite3": "5.1.7"
   },
   "allowScripts": {
-    "sqlite3@6.0.1": true
+    "sqlite3@5.1.7": true
+  },
+  "overrides": {
+    "node-gyp": "^11.0.0",
+    "tar": "^7.5.22"
   }
 }

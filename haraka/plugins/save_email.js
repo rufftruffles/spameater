@@ -131,6 +131,7 @@ function sanitizeHtml(html, maxLength = 500000) {
     // - FORBID_ATTR: blocks event handlers (DOMPurify blocks these by default too)
     // - ALLOW_DATA_ATTR: false prevents data-* attributes that could be misused
     const sanitized = DOMPurify.sanitize(cleaned, {
+        WHOLE_DOCUMENT: true,                   // Keep <head>, where email <style> lives
         ADD_TAGS: ['style'],                    // Keep style tags for email CSS
         FORBID_TAGS: [
             'script', 'iframe', 'frame', 'frameset',
@@ -464,11 +465,12 @@ exports.hook_data_post = function(next, connection) {
         // Extract email data
         const recipients = transaction.rcpt_to.map(rcpt => rcpt.address());
         const sender = transaction.mail_from ? transaction.mail_from.address() : 'unknown@unknown.com';
-        const messageId = transaction.header.get('Message-ID') || generateUUID();
-        const subject = sanitizeText(transaction.header.get('Subject') || '(No subject)', 1000);
+        const messageId = (transaction.header.get('Message-ID') || generateUUID()).trim();
+        // Haraka header.get() keeps the trailing newline; trim it
+        const subject = sanitizeText((transaction.header.get('Subject') || '(No subject)').trim(), 1000);
         
         // Get sender name from From header
-        const fromHeader = transaction.header.get('From') || sender;
+        const fromHeader = (transaction.header.get('From') || sender).trim();
         let senderName = fromHeader;
         const nameMatch = fromHeader.match(/^"?([^"<]+)"?\s*</);
         if (nameMatch) {
