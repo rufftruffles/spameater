@@ -34,16 +34,16 @@ if [ -z "$ENCRYPTION_KEY" ] && [ ! -f "$PERSISTED_ENV" ] && [ -f "$LEGACY_ENV" ]
     echo "🔐 Migrated existing secrets to the data volume"
 fi
 
+# Parse, never source: the file lives on a writable volume and this
+# entrypoint runs as root, so executing it as shell code is off the table.
+# Explicitly-set environment variables win over persisted values.
+read_persisted() {
+    grep "^$1=" "$PERSISTED_ENV" 2>/dev/null | head -1 | cut -d= -f2-
+}
 if [ -f "$PERSISTED_ENV" ]; then
-    # Load persisted secrets, but explicitly-set environment variables win
-    ENV_DELETE_TOKEN_SECRET="$DELETE_TOKEN_SECRET"
-    ENV_CSRF_SECRET="$CSRF_SECRET"
-    ENV_ENCRYPTION_KEY="$ENCRYPTION_KEY"
-    # shellcheck disable=SC1090
-    . "$PERSISTED_ENV"
-    if [ -n "$ENV_DELETE_TOKEN_SECRET" ]; then DELETE_TOKEN_SECRET="$ENV_DELETE_TOKEN_SECRET"; fi
-    if [ -n "$ENV_CSRF_SECRET" ]; then CSRF_SECRET="$ENV_CSRF_SECRET"; fi
-    if [ -n "$ENV_ENCRYPTION_KEY" ]; then ENCRYPTION_KEY="$ENV_ENCRYPTION_KEY"; fi
+    if [ -z "$DELETE_TOKEN_SECRET" ]; then DELETE_TOKEN_SECRET=$(read_persisted DELETE_TOKEN_SECRET); fi
+    if [ -z "$CSRF_SECRET" ]; then CSRF_SECRET=$(read_persisted CSRF_SECRET); fi
+    if [ -z "$ENCRYPTION_KEY" ]; then ENCRYPTION_KEY=$(read_persisted ENCRYPTION_KEY); fi
     echo "🔐 Loaded secrets from the data volume"
 fi
 
@@ -64,13 +64,14 @@ if [ -z "$ENCRYPTION_KEY" ]; then
     echo "🔐 Generated ENCRYPTION_KEY"
 fi
 
-# Persist to the volume, mirror to the app-visible path
+# Persist to the volume (root-owned: only this entrypoint reads it),
+# mirror to the app-visible path
 cat > "$PERSISTED_ENV" << EOF
 DELETE_TOKEN_SECRET=$DELETE_TOKEN_SECRET
 CSRF_SECRET=$CSRF_SECRET
 ENCRYPTION_KEY=$ENCRYPTION_KEY
 EOF
-chown spameater:spameater "$PERSISTED_ENV"
+chown root:root "$PERSISTED_ENV"
 chmod 600 "$PERSISTED_ENV"
 
 cat > "$LEGACY_ENV" << EOF

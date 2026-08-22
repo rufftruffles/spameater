@@ -51,6 +51,8 @@ echo "📄 Copying application files..."
 
 # API server and cleanup
 cp $BUILD_DIR/api-server.js $INSTALL_DIR/
+mkdir -p $INSTALL_DIR/lib
+cp $BUILD_DIR/lib/*.js $INSTALL_DIR/lib/
 cp $BUILD_DIR/deploy/cleanup.sh $INSTALL_DIR/
 chmod +x $INSTALL_DIR/cleanup.sh
 

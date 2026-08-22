@@ -342,7 +342,8 @@ app.delete('/api/delete/:prefix/:emailId', generalLimiter, async (req, res) => {
 
 // Generate token endpoint - returns a delete token for frontend use
 app.post('/api/token/generate', generalLimiter, async (req, res) => {
-    const { prefix, emailId } = req.body;
+    // Express 5 leaves req.body undefined when no JSON body was parsed
+    const { prefix, emailId } = req.body || {};
     const csrfToken = req.headers['x-csrf-token'];
     const userIp = req.ip || req.connection.remoteAddress;
     
@@ -400,7 +401,8 @@ app.post('/api/token/generate', generalLimiter, async (req, res) => {
 
 // Create inbox endpoint - creates empty JSON file
 app.post('/api/inbox/create', strictLimiter, async (req, res) => {
-    const { email } = req.body;
+    // Express 5 leaves req.body undefined when no JSON body was parsed
+    const { email } = req.body || {};
     const csrfToken = req.headers['x-csrf-token'];
     const userIp = req.ip || req.connection.remoteAddress;
     
@@ -462,8 +464,18 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
             // File doesn't exist, create it
         }
         
-        // Create empty inbox JSON. The DB row is created on first received
-        // email with the same 24-hour offset (schema default).
+        // Create the database row now, so the schema's fresh 24-hour default
+        // on first delivery cannot restart the countdown (the INSERT OR
+        // IGNORE in the SMTP path keeps this original row).
+        db.run(
+            `INSERT OR IGNORE INTO inboxes (id, email_address, prefix, created_at, expires_at)
+             VALUES (?, ?, ?, strftime('%s','now'), strftime('%s','now','+24 hours'))`,
+            [crypto.randomUUID(), email, prefix],
+            (err) => {
+                if (err) console.error('[API] Failed to create inbox row:', err.message);
+            }
+        );
+
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         const emptyInbox = {
             email: email,

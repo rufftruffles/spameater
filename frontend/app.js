@@ -375,13 +375,26 @@ class SpamEater {
     }
 
     // Replace every color token inside a CSS value, keeping everything else
-    // (widths, keywords, url() parts) as written by the sender.
+    // as written by the sender. url(...) spans and quoted strings are copied
+    // through untouched so color-looking words in file names survive.
     remapColorsInValue(value, role) {
         const R = window.EmailRemap;
-        return value.replace(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|\b[a-zA-Z]{3,20}\b/g, (token) => {
-            const color = R.parseColor(token);
-            return color ? R.formatColor(R.remapColor(color, role)) : token;
-        });
+        return value
+            .split(/(url\(\s*[^)]*\)|"[^"]*"|'[^']*')/gi)
+            .map((part) => {
+                if (/^(url\(|"|')/i.test(part)) return part;
+                return part.replace(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|\b[a-zA-Z]{3,20}\b/g, (token) => {
+                    const color = R.parseColor(token);
+                    return color ? R.formatColor(R.remapColor(color, role)) : token;
+                });
+            })
+            .join('');
+    }
+
+    // A URL that reaches out to the network: absolute http(s) or
+    // protocol-relative (//host/...), which resolves to https here.
+    isRemoteUrl(url) {
+        return /^(https?:)?\/\//i.test(String(url).trim());
     }
 
     roleForProperty(prop) {
@@ -399,9 +412,9 @@ class SpamEater {
             let value = style.getPropertyValue(prop);
             const priority = style.getPropertyPriority(prop);
             let changed = false;
-            if (!state.allowRemoteImages && /url\(\s*['"]?https?:/i.test(value)) {
+            if (!state.allowRemoteImages && /url\(\s*['"]?(https?:)?\/\//i.test(value)) {
                 const before = value;
-                value = value.replace(/url\(\s*['"]?https?:[^)]*\)/gi, 'none');
+                value = value.replace(/url\(\s*['"]?(https?:)?\/\/[^)]*\)/gi, 'none');
                 if (value !== before) {
                     state.blockedImages++;
                     changed = true;
@@ -426,6 +439,24 @@ class SpamEater {
             if (rule.style) this.remapStyleDeclaration(rule.style, state);
             if (rule.cssRules) this.remapSheetRules(rule.cssRules, state);
         }
+    }
+
+    // Text-level fallback for engines that do not populate CSSOM on a
+    // detached document: transform each declaration's value in place.
+    remapStylesheetText(cssText, state) {
+        return String(cssText).replace(/([a-zA-Z-]+)\s*:\s*([^;{}]+)/g, (match, prop, value) => {
+            let v = value;
+            if (!state.allowRemoteImages && /url\(\s*['"]?(https?:)?\/\//i.test(v)) {
+                const before = v;
+                v = v.replace(/url\(\s*['"]?(https?:)?\/\/[^)]*\)/gi, 'none');
+                if (v !== before) state.blockedImages++;
+            }
+            if (!state.alreadyDark) {
+                const role = this.roleForProperty(prop.toLowerCase());
+                if (role) v = this.remapColorsInValue(v, role);
+            }
+            return `${prop}: ${v}`;
+        });
     }
 
     // Best-effort effective background of the email, for dark-mail detection:
@@ -484,32 +515,47 @@ class SpamEater {
             this.remapStyleDeclaration(el.style, state);
         }
 
-        // <style> sheets (CSSOM is live in a detached createHTMLDocument)
+        // <style> sheets. Chromium exposes CSSOM on a detached
+        // createHTMLDocument; where it is not populated (other engines),
+        // fall back to a per-declaration text transform of the same rules.
+        const processedSheets = new Set();
         for (const sheet of doc.styleSheets) {
             try {
                 this.remapSheetRules(sheet.cssRules, state);
                 const rules = [];
                 for (const rule of sheet.cssRules) rules.push(rule.cssText);
-                if (sheet.ownerNode) sheet.ownerNode.textContent = rules.join('\n');
+                if (sheet.ownerNode) {
+                    sheet.ownerNode.textContent = rules.join('\n');
+                    processedSheets.add(sheet.ownerNode);
+                }
             } catch (err) {
-                // Unreadable sheet: leave it as the sender wrote it
+                // Unreadable sheet: handled by the text fallback below
+            }
+        }
+        for (const styleEl of doc.querySelectorAll('style')) {
+            if (!processedSheets.has(styleEl)) {
+                styleEl.textContent = this.remapStylesheetText(styleEl.textContent, state);
             }
         }
 
-        // Remote images
+        // Remote images: absolute and protocol-relative URLs, in src, srcset,
+        // and legacy background attributes
         if (!allowRemoteImages) {
             for (const img of doc.querySelectorAll('img')) {
                 const src = img.getAttribute('src') || '';
-                if (/^https?:/i.test(src.trim())) {
+                const srcset = img.getAttribute('srcset') || '';
+                const remoteSrc = this.isRemoteUrl(src);
+                const remoteSrcset = srcset && /(^|[\s,])(https?:)?\/\//i.test(srcset);
+                if (remoteSrc || remoteSrcset) {
                     state.blockedImages++;
                     img.setAttribute('src', BLOCKED_IMAGE_PLACEHOLDER);
-                    img.removeAttribute('srcset');
                     img.style.setProperty('max-width', '160px');
                 }
+                // srcset can name remote candidates on its own; drop it always
+                img.removeAttribute('srcset');
             }
             for (const el of doc.querySelectorAll('[background]')) {
-                const src = el.getAttribute('background') || '';
-                if (/^https?:/i.test(src.trim())) {
+                if (this.isRemoteUrl(el.getAttribute('background') || '')) {
                     state.blockedImages++;
                     el.removeAttribute('background');
                 }

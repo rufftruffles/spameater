@@ -208,6 +208,8 @@ fi
 
 # Copy other files
 cp "$ORIGINAL_DIR/api-server.js" /opt/spameater/
+mkdir -p /opt/spameater/lib
+cp "$ORIGINAL_DIR/lib/"*.js /opt/spameater/lib/
 cp "$ORIGINAL_DIR/deploy/cleanup.sh" /opt/spameater/
 chmod +x /opt/spameater/cleanup.sh /opt/spameater/api-server.js
 
