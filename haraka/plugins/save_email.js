@@ -245,10 +245,10 @@ async function saveEmail(emailData) {
 async function updateInboxJSON(emailAddress) {
     return new Promise((resolve, reject) => {
         db.all(
-            `SELECT e.id, e.sender, e.sender_name, e.subject, 
+            `SELECT e.id, e.sender, e.sender_name, e.subject,
                     e.body_text_encrypted, e.body_html_encrypted,
                     e.received_at, e.size_bytes, e.message_id,
-                    e.spf_result, e.dkim_result
+                    e.spf_result, e.dkim_result, i.expires_at
              FROM emails e
              JOIN inboxes i ON e.inbox_id = i.id
              WHERE i.email_address = ?
@@ -289,6 +289,9 @@ async function updateInboxJSON(emailAddress) {
                     updated: Math.floor(Date.now() / 1000),
                     emails: emails
                 };
+                if (rows.length > 0 && rows[0].expires_at) {
+                    jsonData.expires_at = new Date(rows[0].expires_at * 1000).toISOString();
+                }
 
                 try {
                     const prefix = emailAddress.split('@')[0];
@@ -337,9 +340,11 @@ async function createEmptyInboxJSON(emailAddress) {
         email: emailAddress,
         count: 0,
         updated: Math.floor(Date.now() / 1000),
+        // New inboxes live 24 hours; the DB default uses the same offset
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         emails: []
     };
-    
+
     try {
         await fs.writeFile(normalizedPath, JSON.stringify(emptyData, null, 2));
     } catch (err) {

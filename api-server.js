@@ -462,20 +462,24 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
             // File doesn't exist, create it
         }
         
-        // Create empty inbox JSON
+        // Create empty inbox JSON. The DB row is created on first received
+        // email with the same 24-hour offset (schema default).
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         const emptyInbox = {
             email: email,
             count: 0,
             updated: Math.floor(Date.now() / 1000),
+            expires_at: expiresAt,
             emails: []
         };
-        
+
         await fs.writeFile(normalizedPath, JSON.stringify(emptyInbox, null, 2));
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Inbox created successfully',
-            email: email 
+            email: email,
+            expires_at: expiresAt
         });
         
     } catch (err) {
