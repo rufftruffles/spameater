@@ -6,9 +6,13 @@
     <title>Server Error</title>
     <style>
         body {
-            background: #0a0a0a;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0c09;
+            background-image:
+                linear-gradient(#0c0f0b 1px, transparent 1px),
+                linear-gradient(90deg, #0c0f0b 1px, transparent 1px);
+            background-size: 64px 64px;
+            color: #d8e2d4;
+            font-family: ui-monospace, 'JetBrains Mono', monospace;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -17,25 +21,28 @@
         }
         .error-container {
             text-align: center;
+            border: 1px solid #2a331f;
+            background: #0e120c;
+            padding: 48px 64px;
         }
         h1 {
-            font-size: 6rem;
+            font-size: 5rem;
             margin: 0;
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #e6c229;
+            letter-spacing: 0.04em;
         }
         p {
-            font-size: 1.2rem;
-            color: #a0a0a0;
+            font-size: 0.85rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #7d8a76;
         }
     </style>
 </head>
 <body>
     <div class="error-container">
-        <h1>500</h1>
-        <p>Server error. Please try again later.</p>
+        <h1>50x</h1>
+        <p>The Eater choked. Try again in a moment.</p>
     </div>
 </body>
 </html>

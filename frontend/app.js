@@ -970,6 +970,14 @@ class SpamEater {
         if (emailModal) {
             emailModal.classList.remove('modal-fullscreen');
         }
+        const fullscreenBtn = document.getElementById('modalFullscreen');
+        if (fullscreenBtn) {
+            const expandIcon = fullscreenBtn.querySelector('.icon-expand');
+            const compressIcon = fullscreenBtn.querySelector('.icon-compress');
+            if (expandIcon) expandIcon.style.display = '';
+            if (compressIcon) compressIcon.style.display = 'none';
+            fullscreenBtn.title = 'Toggle fullscreen';
+        }
 
         if (modalOverlay) {
             modalOverlay.style.display = 'flex';
@@ -1012,8 +1020,12 @@ class SpamEater {
 
             // Update button icon
             if (fullscreenBtn) {
-                fullscreenBtn.textContent = emailModal.classList.contains('modal-fullscreen') ? '⛶' : '⛶';
-                fullscreenBtn.title = emailModal.classList.contains('modal-fullscreen') ? 'Exit fullscreen' : 'Toggle fullscreen';
+                const fullscreen = emailModal.classList.contains('modal-fullscreen');
+                const expandIcon = fullscreenBtn.querySelector('.icon-expand');
+                const compressIcon = fullscreenBtn.querySelector('.icon-compress');
+                if (expandIcon) expandIcon.style.display = fullscreen ? 'none' : '';
+                if (compressIcon) compressIcon.style.display = fullscreen ? '' : 'none';
+                fullscreenBtn.title = fullscreen ? 'Exit fullscreen' : 'Toggle fullscreen';
             }
         }
     }

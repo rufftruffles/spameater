@@ -4,43 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpamEater - Temporary Email That Devours Spam</title>
-    
+
     <!-- Security headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    
-    <!-- Enhanced Content Security Policy - allows data: for favicon, DOMPurify CDN, and sandboxed iframes -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://cdnjs.cloudflare.com; frame-src blob:; base-uri 'none'; form-action 'self'; upgrade-insecure-requests;">
-    
+
+    <!-- Content Security Policy: everything self-hosted, data: for favicon and image placeholders -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; img-src 'self' https: data:; connect-src 'self'; frame-src blob:; base-uri 'none'; form-action 'self'; upgrade-insecure-requests;">
+
     <!-- Additional security headers -->
     <meta http-equiv="Referrer-Policy" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
-    
+
     <!-- Email domain configuration -->
     <meta name="email-domain" content="EMAIL_DOMAIN_PLACEHOLDER">
-    
+
     <!-- SEO -->
     <meta name="description" content="Create temporary disposable email addresses that automatically expire. Perfect for signups, testing, and avoiding spam.">
     <meta name="keywords" content="temporary email, disposable email, spam protection, temp mail">
     <meta name="robots" content="noindex, nofollow">
-    
+
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
-    
-    <!-- Google Fonts - Cyber Neon Theme -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Styles -->
+    <!-- Styles (fonts are self-hosted, declared in style.css) -->
     <link rel="stylesheet" href="style.css">
 
-    <!-- DOMPurify for secure HTML sanitization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js" integrity="sha512-Ll+TuDvrWDNNRnFFIM8dOiw7Go7dsHyxRp4RutiIFW/wm3DgDmCnRZow6AqbXnCbpWu93yM1O34q+4ggzGeXVA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
+    <!-- DOMPurify for secure HTML sanitization (vendored) -->
+    <script src="vendor/dompurify.min.js"></script>
+
     <!-- Preload critical resources -->
     <link rel="preload" href="app.js" as="script">
-    <link rel="dns-prefetch" href="/api/">
+    <link rel="preload" href="fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
     <!-- Main Container -->
@@ -48,10 +44,12 @@
         <!-- Email Creation Section -->
         <section class="email-creator" id="emailCreator">
             <div class="creator-container">
-                <!-- Header -->
                 <header class="header">
-                    <h1 class="logo-text">SpamEater</h1>
-                    <p class="tagline">// DISPOSABLE EMAIL PROTOCOL</p>
+                    <div class="logo-row">
+                        <svg class="logo-mark" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7 L12 3 L20 7 L20 17 L12 21 L4 17 Z"></path><path d="M4 7 L12 11 L20 7"></path><path d="M12 11 L12 21"></path></svg>
+                        <h1 class="logo-text">SPAMEATER</h1>
+                    </div>
+                    <p class="tagline">Disposable mail, gone in 24 hours</p>
                 </header>
 
                 <div class="creator-card">
@@ -70,25 +68,31 @@
                             >
                             <span class="domain-suffix">@<span id="domainName">spameater.io</span></span>
                         </div>
+                        <button class="icon-btn dice-btn" id="diceBtn" title="Random address" aria-label="Generate a random address">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18"></rect><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"></circle></svg>
+                        </button>
                         <button class="create-btn" id="createBtn" disabled aria-label="Create email">
                             <span class="btn-text">Feed the Eater</span>
-                            <span class="btn-icon">🍴</span>
                         </button>
                     </div>
 
-                    <!-- Feature Icons -->
+                    <!-- Feature badges -->
                     <div class="features">
                         <div class="feature">
-                            <div class="feature-icon">🔐</div>
-                            <div class="feature-text">AES-256</div>
+                            <svg class="feature-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="4" y="10" width="16" height="11"></rect><path d="M8 10 V7 a4 4 0 0 1 8 0 v3"></path></svg>
+                            <span class="feature-text">AES-256</span>
                         </div>
                         <div class="feature">
-                            <div class="feature-icon">⏱️</div>
-                            <div class="feature-text">24H TTL</div>
+                            <svg class="feature-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7 v5 l3.5 2"></path></svg>
+                            <span class="feature-text">24H TTL</span>
                         </div>
                         <div class="feature">
-                            <div class="feature-icon">👁️</div>
-                            <div class="feature-text">ZERO LOG</div>
+                            <svg class="feature-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M3 3 L21 21"></path><path d="M10.5 5.2 A9.8 9.8 0 0 1 21.8 12 A17 17 0 0 1 19 15.5 M6.6 6.6 A17 17 0 0 0 2.2 12 A9.8 9.8 0 0 0 14 18.6"></path></svg>
+                            <span class="feature-text">ZERO LOG</span>
+                        </div>
+                        <div class="feature">
+                            <svg class="feature-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="3" y="4" width="18" height="14"></rect><path d="M3 6 l9 6 l9 -6"></path></svg>
+                            <span class="feature-text">TRACKERS BLOCKED</span>
                         </div>
                     </div>
                 </div>
@@ -97,26 +101,25 @@
 
         <!-- Inbox Section -->
         <section class="inbox-section" id="inboxSection" style="display: none;">
-            <!-- Top Bar - OUTSIDE of email-switcher -->
             <div class="inbox-top-bar">
                 <button class="home-btn" id="homeBtn" title="Go to Homepage" aria-label="Go to homepage">
-                    <span class="home-icon">🏠</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11 L12 3 L21 11"></path><path d="M5 10 V21 H19 V10"></path></svg>
                     <span class="home-text">Home</span>
                 </button>
                 <div class="email-status">
                     <span class="status-dot" aria-hidden="true"></span>
                     <span class="status-text" id="statusText">Waiting for emails...</span>
                 </div>
+                <span class="ttl-chip" id="ttlChip" hidden title="Time until this inbox is deleted"></span>
             </div>
-            
-            <!-- Email Switcher - SEPARATE from top bar -->
+
             <div class="email-switcher">
                 <div class="switcher-input-group">
                     <div class="switcher-wrapper">
-                        <input 
-                            type="text" 
-                            id="emailSwitcher" 
-                            class="switcher-input" 
+                        <input
+                            type="text"
+                            id="emailSwitcher"
+                            class="switcher-input"
                             placeholder="Enter email or create new"
                             maxlength="50"
                             pattern="[a-zA-Z0-9][a-zA-Z0-9.\-_]*[a-zA-Z0-9]"
@@ -126,33 +129,40 @@
                         >
                         <span class="switcher-domain">@<span id="switcherDomainName">spameater.io</span></span>
                     </div>
+                    <button class="icon-btn" id="copyAddressBtn" title="Copy address" aria-label="Copy current address">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12"></rect><path d="M5 15 H4 a1 1 0 0 1 -1 -1 V4 a1 1 0 0 1 1 -1 h10 a1 1 0 0 1 1 1 v1"></path></svg>
+                    </button>
+                    <button class="icon-btn" id="switcherDiceBtn" title="Random address" aria-label="Generate a random address">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18"></rect><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"></circle></svg>
+                    </button>
                     <button class="switch-btn" id="switchBtn" title="Switch/Create Email" aria-label="Switch or create email">
                         <span>Switch</span>
-                        <span>↩️</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Inbox -->
             <div class="inbox-container">
                 <div class="inbox-header">
                     <h3>
-                        <span class="inbox-icon" aria-hidden="true">📥</span>
-                        Your Inbox
+                        Inbox
                         <span class="email-count" id="emailCount" aria-label="Email count">0</span>
                     </h3>
                     <button class="refresh-btn" id="refreshBtn" title="Refresh inbox" aria-label="Refresh inbox">
-                        <span class="refresh-icon">🔄</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12 a9 9 0 1 1 -2.6 -6.4"></path><path d="M21 3 v6 h-6"></path></svg>
+                        <span>Refresh</span>
                     </button>
                 </div>
 
-                <!-- Email List -->
                 <div class="email-list" id="emailList" role="list" aria-label="Email list">
                     <div class="empty-state" id="emptyState">
-                        <div class="empty-icon" aria-hidden="true">🍽️</div>
-                        <h4>Ready to eat spam!</h4>
-                        <p>Your temporary email is active. Any emails sent here will appear instantly.</p>
+                        <svg class="empty-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="14"></rect><path d="M3 6 l9 6 l9 -6"></path></svg>
+                        <h4>Ready to eat spam.</h4>
+                        <p>Mail sent to this address shows up here within seconds.</p>
                     </div>
+                </div>
+                <div class="inbox-footer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3 L21 21"></path><path d="M10.5 5.2 A9.8 9.8 0 0 1 21.8 12 A17 17 0 0 1 19 15.5 M6.6 6.6 A17 17 0 0 0 2.2 12 A9.8 9.8 0 0 0 14 18.6"></path></svg>
+                    <span>Remote images blocked until you load them</span>
                 </div>
             </div>
         </section>
@@ -163,9 +173,16 @@
                 <div class="modal-header">
                     <h3 id="modalSubject">Email Subject</h3>
                     <div class="modal-actions">
-                        <button class="modal-fullscreen" id="modalFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
-                        <button class="modal-delete" id="modalDelete" title="Delete email" aria-label="Delete email">🗑️</button>
-                        <button class="modal-close" id="modalClose" aria-label="Close modal">✕</button>
+                        <button class="modal-fullscreen" id="modalFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+                            <svg class="icon-expand" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9 V4 h5"></path><path d="M20 9 V4 h-5"></path><path d="M4 15 v5 h5"></path><path d="M20 15 v5 h-5"></path></svg>
+                            <svg class="icon-compress" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="display: none;"><path d="M9 4 v5 H4"></path><path d="M15 4 v5 h5"></path><path d="M9 20 v-5 H4"></path><path d="M15 20 v-5 h5"></path></svg>
+                        </button>
+                        <button class="modal-delete" id="modalDelete" title="Delete email" aria-label="Delete email">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7 h16"></path><path d="M9 7 V5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 v2"></path><path d="M6 7 l1 13 a1 1 0 0 0 1 1 h8 a1 1 0 0 0 1 -1 l1 -13"></path></svg>
+                        </button>
+                        <button class="modal-close" id="modalClose" aria-label="Close modal">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 5 L19 19 M19 5 L5 19"></path></svg>
+                        </button>
                     </div>
                 </div>
                 <div class="modal-body">
@@ -180,7 +197,9 @@
                         </div>
                         <button class="load-images-btn" id="loadImagesBtn" hidden aria-label="Load remote images in this email">Load images</button>
                     </div>
-                    <!-- Sandboxed iframe for secure email rendering -->
+                    <!-- Sandboxed iframe for secure email rendering.
+                         Invariant: sandbox stays allow-same-origin WITHOUT allow-scripts.
+                         The pairing of both would let email content escape the sandbox. -->
                     <iframe
                         id="emailFrame"
                         class="email-frame"
@@ -190,7 +209,6 @@
                     <div class="headers-toggle">
                         <button class="toggle-btn" id="toggleHeaders" aria-label="Toggle email headers">
                             <span id="toggleText">Show Headers</span>
-                            <span>📋</span>
                         </button>
                         <div class="email-headers" id="emailHeaders" style="display: none;">
                             <!-- Headers will be loaded here -->
@@ -199,11 +217,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Delete confirmation dialog -->
+        <div class="confirm-overlay" id="confirmOverlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="confirmText">
+            <div class="confirm-box">
+                <p id="confirmText">Delete this email?</p>
+                <div class="confirm-actions">
+                    <button id="confirmCancel" class="btn-ghost">Keep it</button>
+                    <button id="confirmOk" class="btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>// made with ❤️ for privacy • <a href="https://github.com/rufftruffles/spameater" target="_blank" rel="noopener">github.com/spameater</a></p>
+        <p>Self-hosted, open source. <a href="https://github.com/rufftruffles/spameater" target="_blank" rel="noopener">github.com/rufftruffles/spameater</a></p>
     </footer>
 
     <!-- Toast Notifications -->
