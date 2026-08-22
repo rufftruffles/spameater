@@ -13,12 +13,20 @@ SpamEater runs on your own domain and server. Type a name, get an inbox, use it 
 
 ## What's new in v4
 
-- **Emails render correctly.** HTML mail is adapted to the dark interface color by color: the sender's layout, tables, and buttons stay intact instead of being flattened by forced styles. Mail designed dark passes through untouched.
-- **Tracking pixels are dead.** Remote images are blocked by default and shown as placeholders. One click loads them for that email if you want them.
-- **Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, and a layout that works from phones to desktops. The browser now loads nothing from third-party CDNs.
-- **Docker upgrades keep your data.** Secrets persist on the data volume, so `docker compose pull && up -d` no longer regenerates the encryption key that protects stored mail.
-- **A real dependency manifest.** `package.json` with pinned versions and a committed lockfile; CI installs, audits, and tests before publishing an image. First tests in the repo.
-- Copy button, random address generator, and a live self-destruct countdown.
+**Email rendering, rebuilt.**
+- HTML mail is adapted to the dark interface color by color: the sender's layout, tables, and buttons stay intact instead of being flattened by forced styles. Mail designed dark passes through untouched. A contrast guard checks the rendered result and lifts any text a sender left unreadable, whatever markup produced it.
+- Forwarded mail displays now. The MIME tree is walked in full, so text nested under `multipart/mixed` (every forward, every attachment-bearing message) is found instead of coming up "No content available".
+- Inline images (signature logos referenced by `cid:`) are embedded at ingestion and render like the sender intended. Remote images stay blocked until you load them for that email — tracking pixels never fire on open.
+- Links open in a new tab with `noopener` and no referrer. Dark scrollbars, readable dividers, correct rendering at phone widths.
+
+**Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, themed install scripts to match. The browser loads nothing from third-party CDNs. Copy button, random address generator, live self-destruct countdown, styled delete confirmation.
+
+**Operations and security.**
+- Docker upgrades keep your data: secrets persist on the data volume, so `docker compose pull && up -d` no longer regenerates the encryption key that protects stored mail.
+- Email `<style>` blocks survive ingestion (they were stripped since v1, which is why styled mail looked broken).
+- The 24-hour countdown starts at inbox creation and cannot silently restart on first delivery.
+- Fixed a crash on malformed delete tokens; fresh installs work on both Haraka 3.1 and 3.3 APIs.
+- `package.json` with pinned versions and a committed lockfile; CI installs, audits, and tests before publishing an image. First test suite in the repo.
 
 ## Screenshots
 

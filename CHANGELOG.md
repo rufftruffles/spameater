@@ -2,6 +2,12 @@
 
 ## 4.0.0 — 2026-08-22
 
+### Email ingestion
+- Forwarded and attachment-bearing mail extracts correctly: the full MIME tree is walked instead of one level of children (was "No content available" for every forward).
+- Inline images referenced by `Content-ID` are embedded into the stored HTML as data URIs (raster formats only, 200KB per image, 400KB per message), so signature logos render.
+- Subjects and From headers are trimmed of trailing newlines.
+- Compatible with both the Haraka 3.1 method API and the 3.3 property API for addresses (fresh installs pin Haraka 3.3.3 and failed delivery without this).
+
 ### Email viewer
 - HTML mail is color-remapped to the dark interface per color (hue preserved, luminance inverted for light designs) instead of being overridden with forced styles. Mail that is already dark renders as sent.
 - Fixed: email `<style>` blocks were stripped during sanitization, so styled mail lost its layout entirely (`WHOLE_DOCUMENT` sanitize).
@@ -9,6 +15,10 @@
 - Remote images are blocked by default and replaced with placeholders; a per-email button loads them. CSS background images from remote hosts are stripped the same way.
 - Reverted the v3 rendering workarounds (hidden `hr`, removed table borders, scanline overlay).
 - Email modal is fullscreen on phones; wide fixed-width mail scrolls horizontally inside the frame.
+- A post-render contrast guard verifies every text's computed color against its effective background and lifts unreadable text (catches legacy `font[color]` attributes, system color keywords, and inheritance the source transform cannot see). Legacy color attributes are remapped as hex, which is the only notation they accept.
+- Links open in a new tab with `noopener noreferrer`; the sandbox allows popups only, scripts remain forbidden.
+- The frame declares `color-scheme: dark` (dark scrollbars) and gives unstyled `hr` dividers a subtle line.
+- Blocking also covers protocol-relative URLs, `srcset` candidates, and CSS background images; `cid:` references without a stored image show a placeholder.
 
 ### Interface
 - New Terminal Ledger design: dark palette with a single lime accent, JetBrains Mono + Space Grotesk (self-hosted), SVG icons throughout, restyled error pages.
@@ -32,3 +42,4 @@
 - `package.json` with exact-pinned dependencies and a committed lockfile (`.gitignore` no longer excludes all JSON files).
 - First test suite (`node:test`): color remap engine, delete tokens, prefix validation.
 - Local dev server (`scripts/dev.js`) and inbox seeder (`scripts/seed-inbox.js`) that run without root.
+- Install and uninstall scripts restyled to the Terminal Ledger theme (ANSI colors on a TTY, plain text otherwise); the setup summary no longer prints secrets to the terminal, and the unused database password is gone.
