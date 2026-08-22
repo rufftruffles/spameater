@@ -71,7 +71,9 @@ exports.register = function() {
 
 exports.hook_rcpt = function(next, connection, params) {
     const plugin = this;
-    const recipient = params[0].address().toLowerCase();
+    const rcpt = params[0];
+    const rcptAddr = typeof rcpt.address === 'function' ? rcpt.address() : String(rcpt.address || rcpt.original || '');
+    const recipient = rcptAddr.toLowerCase();
     const rawIP = connection.remote.ip;
     const normalizedIP = normalizeIPv6(rawIP);
     const now = Date.now();

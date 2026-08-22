@@ -162,6 +162,14 @@ function generateUUID() {
     return crypto.randomUUID();
 }
 
+// Haraka <=3.1 exposes rcpt/mail_from address as a method, 3.3+ as a
+// property. Accept both.
+function addressOf(addr) {
+    if (!addr) return '';
+    if (typeof addr.address === 'function') return addr.address();
+    return String(addr.address || addr.original || '');
+}
+
 // Extract sender IP from Received headers
 function extractSenderIP(receivedHeaders) {
     if (!receivedHeaders || receivedHeaders.length === 0) return null;
@@ -416,7 +424,7 @@ exports.register = function() {
 // Hook: Validate recipient
 exports.hook_rcpt = async function(next, connection, params) {
     const plugin = this;
-    const recipient = params[0].address();
+    const recipient = addressOf(params[0]);
     const senderIp = connection.remote.ip;
     
     // Security: Validate email format
@@ -515,8 +523,8 @@ exports.hook_data_post = function(next, connection) {
     
     try {
         // Extract email data
-        const recipients = transaction.rcpt_to.map(rcpt => rcpt.address());
-        const sender = transaction.mail_from ? transaction.mail_from.address() : 'unknown@unknown.com';
+        const recipients = transaction.rcpt_to.map(rcpt => addressOf(rcpt));
+        const sender = transaction.mail_from ? addressOf(transaction.mail_from) : 'unknown@unknown.com';
         const messageId = (transaction.header.get('Message-ID') || generateUUID()).trim();
         // Haraka header.get() keeps the trailing newline; trim it
         const subject = sanitizeText((transaction.header.get('Subject') || '(No subject)').trim(), 1000);
