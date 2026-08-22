@@ -23,7 +23,12 @@ class SpamEater {
         this.csrfToken = null; // Store CSRF token
         this.failedAttempts = 0; // Track failed requests
         this.maxFailedAttempts = 5; // Stop polling after 5 failures
-        
+        this.currentRenderData = null; // Email shown in the modal, for re-render
+        this.confirmResolver = null; // Pending confirmDialog() promise
+        this.confirmReturnFocus = null;
+        this.ttlTimer = null; // Countdown interval
+        this.inboxExpiresAt = null; // ms epoch of inbox expiry
+
         this.init();
     }
     
@@ -162,10 +167,50 @@ class SpamEater {
                 loadImagesBtn.hidden = true;
             }
         });
-        
+
+        // Copy current address
+        const copyAddressBtn = document.getElementById('copyAddressBtn');
+        copyAddressBtn?.addEventListener('click', () => this.copyAddress());
+
+        // Random address generators
+        const diceBtn = document.getElementById('diceBtn');
+        diceBtn?.addEventListener('click', () => {
+            const input = document.getElementById('emailPrefix');
+            if (input) {
+                input.value = this.randomPrefix();
+                input.dispatchEvent(new Event('input'));
+                input.focus();
+            }
+        });
+        const switcherDiceBtn = document.getElementById('switcherDiceBtn');
+        switcherDiceBtn?.addEventListener('click', () => {
+            const input = document.getElementById('emailSwitcher');
+            if (input) {
+                input.value = this.randomPrefix();
+                input.dispatchEvent(new Event('input'));
+                input.focus();
+            }
+        });
+
+        // Delete confirmation dialog
+        const confirmOverlay = document.getElementById('confirmOverlay');
+        const confirmCancel = document.getElementById('confirmCancel');
+        const confirmOk = document.getElementById('confirmOk');
+        confirmCancel?.addEventListener('click', () => this.resolveConfirm(false));
+        confirmOk?.addEventListener('click', () => this.resolveConfirm(true));
+        confirmOverlay?.addEventListener('click', (e) => {
+            if (e.target === confirmOverlay) this.resolveConfirm(false);
+        });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.closeModal();
+            if (e.key === 'Escape') {
+                if (this.confirmResolver) {
+                    this.resolveConfirm(false);
+                } else {
+                    this.closeModal();
+                }
+            }
             if (e.key === 'r' && e.ctrlKey) {
                 e.preventDefault();
                 this.refreshInbox();
@@ -197,7 +242,8 @@ class SpamEater {
     goHome() {
         // Stop polling
         this.stopPolling();
-        
+        this.stopTtl();
+
         // Clear stored email
         this.clearStoredEmail();
         
@@ -550,6 +596,133 @@ class SpamEater {
         }
     }
 
+    // Copy the active address to the clipboard
+    async copyAddress() {
+        if (!this.currentEmail) return;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(this.currentEmail);
+            } else {
+                const temp = document.createElement('input');
+                temp.value = this.currentEmail;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+            }
+            this.showToast('Address copied.', 'success');
+        } catch (error) {
+            this.showToast('Copy failed. Select the address and copy it manually.', 'error');
+        }
+    }
+
+    // Crypto-random adjective-noun prefix, e.g. midnight-fox42
+    randomPrefix() {
+        const adjectives = [
+            'amber', 'ashen', 'bold', 'brisk', 'broad', 'calm', 'cedar', 'clear',
+            'cobalt', 'copper', 'coral', 'crisp', 'dusty', 'early', 'ember', 'faded',
+            'feral', 'flint', 'frost', 'gentle', 'gray', 'green', 'hazel', 'hidden',
+            'hollow', 'iron', 'ivory', 'jade', 'keen', 'late', 'lone', 'lucid',
+            'midnight', 'misty', 'noble', 'north', 'olive', 'pale', 'quiet', 'rapid',
+            'rustic', 'silent', 'slate', 'solar', 'still', 'stone', 'swift', 'wild'
+        ];
+        const nouns = [
+            'aspen', 'badger', 'birch', 'bison', 'cedar', 'comet', 'crane', 'creek',
+            'crow', 'delta', 'drift', 'eagle', 'ember', 'falcon', 'fern', 'finch',
+            'fox', 'gorge', 'hare', 'hawk', 'heron', 'lark', 'lynx', 'maple',
+            'marsh', 'moth', 'otter', 'owl', 'pike', 'pine', 'raven', 'reef',
+            'ridge', 'river', 'sable', 'shard', 'spruce', 'stag', 'stork', 'summit',
+            'swan', 'thorn', 'tide', 'trail', 'vale', 'wolf', 'wren', 'yarrow'
+        ];
+        const random = new Uint32Array(3);
+        crypto.getRandomValues(random);
+        const adjective = adjectives[random[0] % adjectives.length];
+        const noun = nouns[random[1] % nouns.length];
+        const digits = String(random[2] % 100).padStart(2, '0');
+        return `${adjective}-${noun}${digits}`;
+    }
+
+    // Promise-based replacement for window.confirm()
+    confirmDialog(message) {
+        const overlay = document.getElementById('confirmOverlay');
+        const text = document.getElementById('confirmText');
+        const cancelBtn = document.getElementById('confirmCancel');
+        if (!overlay || !text) {
+            return Promise.resolve(window.confirm(message));
+        }
+        text.textContent = message;
+        overlay.hidden = false;
+        this.confirmReturnFocus = document.activeElement;
+        if (cancelBtn) cancelBtn.focus();
+        return new Promise((resolve) => {
+            this.confirmResolver = resolve;
+        });
+    }
+
+    resolveConfirm(result) {
+        const overlay = document.getElementById('confirmOverlay');
+        if (overlay) overlay.hidden = true;
+        if (this.confirmReturnFocus && this.confirmReturnFocus.focus) {
+            this.confirmReturnFocus.focus();
+        }
+        this.confirmReturnFocus = null;
+        if (this.confirmResolver) {
+            const resolve = this.confirmResolver;
+            this.confirmResolver = null;
+            resolve(result);
+        }
+    }
+
+    // TTL countdown chip; hidden when the server does not report expires_at
+    updateTtl(expiresAt) {
+        const chip = document.getElementById('ttlChip');
+        if (!chip) return;
+        if (!expiresAt) {
+            if (!this.inboxExpiresAt) chip.hidden = true;
+            return;
+        }
+        const parsed = Date.parse(expiresAt);
+        if (Number.isNaN(parsed)) return;
+        this.inboxExpiresAt = parsed;
+        chip.hidden = false;
+        this.renderTtl();
+        if (!this.ttlTimer) {
+            this.ttlTimer = setInterval(() => {
+                if (document.hidden) return;
+                this.renderTtl();
+            }, 1000);
+        }
+    }
+
+    renderTtl() {
+        const chip = document.getElementById('ttlChip');
+        if (!chip || !this.inboxExpiresAt) return;
+        let remaining = Math.floor((this.inboxExpiresAt - Date.now()) / 1000);
+        if (remaining <= 0) {
+            chip.textContent = 'Expired';
+            chip.classList.add('ttl-warning');
+            return;
+        }
+        const hours = String(Math.floor(remaining / 3600)).padStart(2, '0');
+        const minutes = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
+        const seconds = String(remaining % 60).padStart(2, '0');
+        chip.textContent = `Self-destructs in ${hours}:${minutes}:${seconds}`;
+        chip.classList.toggle('ttl-warning', remaining < 3600);
+    }
+
+    stopTtl() {
+        if (this.ttlTimer) {
+            clearInterval(this.ttlTimer);
+            this.ttlTimer = null;
+        }
+        this.inboxExpiresAt = null;
+        const chip = document.getElementById('ttlChip');
+        if (chip) {
+            chip.hidden = true;
+            chip.classList.remove('ttl-warning');
+        }
+    }
+
     async createEmail() {
         const input = document.getElementById('emailPrefix');
         const prefix = input?.value?.trim();
@@ -663,8 +836,11 @@ class SpamEater {
             this.showToast('Already viewing this inbox', 'error');
             return;
         }
-        
-        // NEW: Try to create the inbox first (just like createEmail does)
+
+        // Reset the countdown; the new inbox reports its own expiry
+        this.stopTtl();
+
+        // Try to create the inbox first (just like createEmail does)
         try {
             const response = await fetch('/api/inbox/create', {
                 method: 'POST',
@@ -771,7 +947,8 @@ class SpamEater {
                 const data = await response.json();
                 this.displayEmails(data.emails || []);
                 this.updateEmailCount(data.count || 0);
-                
+                this.updateTtl(data.expires_at);
+
                 // Pre-fetch delete tokens for new emails
                 if (data.emails && data.emails.length > 0) {
                     this.prefetchDeleteTokens(data.emails);
@@ -1223,7 +1400,7 @@ class SpamEater {
         if (!this.currentEmail) return;
         
         // Show confirmation
-        const confirmDelete = confirm('Are you sure you want to delete this email?');
+        const confirmDelete = await this.confirmDialog('Delete this email? It cannot be recovered.');
         if (!confirmDelete) return;
         
         // If deleting from modal, close it first
