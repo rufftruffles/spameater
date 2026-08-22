@@ -1,11 +1,16 @@
-# SpamEater
+<div align="center">
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/rufftruffles/spameater)
-![GitHub stars](https://img.shields.io/github/stars/rufftruffles/spameater)
-![GitHub issues](https://img.shields.io/github/issues/rufftruffles/spameater)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker/)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rufftruffles/spameater/docker-publish.yml)
+<img src="screenshots/header.svg" alt="SpamEater" width="100%">
+
+![Release](https://img.shields.io/github/v/release/rufftruffles/spameater?style=flat-square&labelColor=0a0c09&color=a3e635)
+![Stars](https://img.shields.io/github/stars/rufftruffles/spameater?style=flat-square&labelColor=0a0c09&color=a3e635)
+![Build](https://img.shields.io/github/actions/workflow/status/rufftruffles/spameater/docker-publish.yml?style=flat-square&labelColor=0a0c09&color=a3e635)
+![License](https://img.shields.io/badge/license-MIT-a3e635?style=flat-square&labelColor=0a0c09)
+![Docker](https://img.shields.io/badge/docker-ready-a3e635?style=flat-square&labelColor=0a0c09)
+
+</div>
+
+# SpamEater
 
 **Self-hosted disposable email. Every inbox deletes itself after 24 hours.**
 
@@ -16,10 +21,10 @@ SpamEater runs on your own domain and server. Type a name, get an inbox, use it 
 **Email rendering, rebuilt.**
 - HTML mail is adapted to the dark interface color by color: the sender's layout, tables, and buttons stay intact instead of being flattened by forced styles. Mail designed dark passes through untouched. A contrast guard checks the rendered result and lifts any text a sender left unreadable, whatever markup produced it.
 - Forwarded mail displays now. The MIME tree is walked in full, so text nested under `multipart/mixed` (every forward, every attachment-bearing message) is found instead of coming up "No content available".
-- Inline images (signature logos referenced by `cid:`) are embedded at ingestion and render like the sender intended. Remote images stay blocked until you load them for that email — tracking pixels never fire on open.
+- Inline images (signature logos referenced by `cid:`) are embedded at ingestion and render like the sender intended. Remote images stay blocked until you load them for that email, so tracking pixels never fire on open.
 - Links open in a new tab with `noopener` and no referrer. Dark scrollbars, readable dividers, correct rendering at phone widths.
 
-**Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, themed install scripts to match. The browser loads nothing from third-party CDNs. Copy button, random address generator, live self-destruct countdown, styled delete confirmation.
+**Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, themed install scripts to match. The browser loads nothing from third-party CDNs. Copy button, random address generator, live self-destruct countdown, styled delete confirmation. Since v4.1 there is a dark/light toggle: it follows the OS preference by default, remembers an explicit choice, and in light mode email renders exactly as the sender designed it.
 
 **Operations and security.**
 - Docker upgrades keep your data: secrets persist on the data volume, so `docker compose pull && up -d` no longer regenerates the encryption key that protects stored mail.
@@ -31,17 +36,21 @@ SpamEater runs on your own domain and server. Type a name, get an inbox, use it 
 ## Screenshots
 
 <div align="center">
-  <img src="screenshots/1.png" alt="SpamEater landing page" width="600">
+  <img src="screenshots/banner.png" alt="SpamEater in dark and light themes" width="100%">
   <br>
-  <em>Pick a name or roll the dice</em>
+  <em>One toggle, two themes: dark follows the brand, light follows the paper</em>
   <br><br>
-  <img src="screenshots/2.png" alt="SpamEater inbox" width="600">
+  <img src="screenshots/2.png" alt="SpamEater inbox" width="820">
   <br>
-  <em>Inbox with live countdown, copy, and switch controls</em>
+  <em>Inbox with live self-destruct countdown, copy, and switch controls</em>
   <br><br>
-  <img src="screenshots/3.png" alt="SpamEater email view" width="600">
+  <img src="screenshots/3.png" alt="SpamEater email view" width="820">
   <br>
-  <em>HTML mail adapted to dark, remote images blocked until loaded</em>
+  <em>HTML mail adapted to the dark theme, remote images blocked until loaded</em>
+  <br><br>
+  <img src="screenshots/4.png" alt="SpamEater inbox in light theme" width="820">
+  <br>
+  <em>The same inbox in light</em>
 </div>
 
 ## Features
@@ -134,7 +143,7 @@ docker exec -it spameater supervisorctl status      # service status
 docker run --rm -v spameater_data:/data -v $(pwd):/backup alpine tar czf /backup/spameater-backup-$(date +%Y%m%d).tar.gz -C /data .
 ```
 
-Upgrading from v3: if the old container is still running, restart in place once (`docker compose restart`) before recreating, and the existing key is migrated to the volume. If the container was already recreated, the old key is gone with it — with the 24-hour retention window that costs at most one day of mail.
+Upgrading from v3: if the old container is still running, restart in place once (`docker compose restart`) before recreating, and the existing key is migrated to the volume. If the container was already recreated, the old key is gone with it; with the 24-hour retention window that costs at most one day of mail.
 
 </details>
 
@@ -199,7 +208,7 @@ Haraka SMTP (:25) ─────────────→ SQLite + JSON inbox
 npm ci
 npm test                                        # node:test suite
 
-# Local dev stack (no root, no /opt) — http://127.0.0.1:8080
+# Local dev stack (no root, no /opt) at http://127.0.0.1:8080
 mkdir -p .devhome/data/inboxes
 sqlite3 .devhome/data/emails.db < database/schema.sql
 SPAMEATER_HOME=$PWD/.devhome node scripts/seed-inbox.js
@@ -230,7 +239,7 @@ curl "https://your-domain.com/?test=<script>alert(1)</script>"
 curl "https://your-domain.com/../../etc/passwd"
 ```
 
-On Enterprise Linux 10, EPEL does not package the nginx connector yet; the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx). Where no package source exists at all, the installer says so and continues — the application-level protections (CSRF, delete tokens, input validation, sanitization, rate limits) do not depend on the WAF.
+On Enterprise Linux 10, EPEL does not package the nginx connector yet; the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx). Where no package source exists at all, the installer says so and continues; the application-level protections (CSRF, delete tokens, input validation, sanitization, rate limits) do not depend on the WAF.
 
 ## Security notes
 
@@ -241,7 +250,7 @@ On Enterprise Linux 10, EPEL does not package the nginx connector yet; the insta
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2025 rufftruffles
+MIT, see [LICENSE](LICENSE). Copyright (c) 2025 rufftruffles
 
 ## Acknowledgments
 
