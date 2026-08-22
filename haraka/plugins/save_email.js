@@ -8,8 +8,9 @@ const path = require('path');
 const DOMPurify = require('isomorphic-dompurify');
 
 // Database connection
-const DB_PATH = '/opt/spameater/data/emails.db';
-const DATA_DIR = '/opt/spameater/data/inboxes';
+const SPAMEATER_HOME = process.env.SPAMEATER_HOME || '/opt/spameater';
+const DB_PATH = path.join(SPAMEATER_HOME, 'data', 'emails.db');
+const DATA_DIR = path.join(SPAMEATER_HOME, 'data', 'inboxes');
 
 // Encryption settings
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
@@ -389,7 +390,7 @@ async function findOrCreateInbox(emailAddress) {
 // Read allowed domains from host_list file
 async function getAllowedDomains() {
     try {
-        const hostListPath = '/opt/spameater/haraka/config/host_list';
+        const hostListPath = path.join(SPAMEATER_HOME, 'haraka', 'config', 'host_list');
         const content = await fs.readFile(hostListPath, 'utf8');
         return content.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('#'));
     } catch (err) {

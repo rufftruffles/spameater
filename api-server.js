@@ -10,14 +10,16 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
+const deleteTokens = require('./lib/delete-token.js');
 
 const app = express();
 
 // Trust nginx proxy (fixes X-Forwarded-For issue)
 app.set('trust proxy', 1);
 
-const DATA_DIR = '/opt/spameater/data/inboxes';
-const DB_PATH = '/opt/spameater/data/emails.db';
+const SPAMEATER_HOME = process.env.SPAMEATER_HOME || '/opt/spameater';
+const DATA_DIR = path.join(SPAMEATER_HOME, 'data', 'inboxes');
+const DB_PATH = path.join(SPAMEATER_HOME, 'data', 'emails.db');
 const PORT = 3001; // Internal API port
 
 // Security: Validate critical environment variables on startup
@@ -166,56 +168,32 @@ function verifyCSRFToken(token) {
 // Token cache to reduce computation
 const tokenCache = new Map();
 const TOKEN_CACHE_SIZE = 1000;
-const TOKEN_WINDOW = 300000; // 5 minutes
+const TOKEN_WINDOW = deleteTokens.TOKEN_WINDOW_MS;
 
 // Generate delete token for an email
 function generateDeleteToken(prefix, emailId) {
     const window = Math.floor(Date.now() / TOKEN_WINDOW);
     const cacheKey = `${prefix}:${emailId}:${window}`;
-    
+
     // Check cache first
     if (tokenCache.has(cacheKey)) {
         return tokenCache.get(cacheKey);
     }
-    
+
     // Limit cache size
     if (tokenCache.size > TOKEN_CACHE_SIZE) {
         const firstKey = tokenCache.keys().next().value;
         tokenCache.delete(firstKey);
     }
-    
-    const data = `${prefix}:${emailId}:${window}`;
-    const token = crypto.createHmac('sha256', DELETE_TOKEN_SECRET)
-        .update(data)
-        .digest('hex')
-        .substring(0, 16);
-    
+
+    const token = deleteTokens.generateDeleteToken(DELETE_TOKEN_SECRET, prefix, emailId);
     tokenCache.set(cacheKey, token);
     return token;
 }
 
-// Verify delete token with constant-time comparison
+// Verify delete token (length-guarded, constant-time; current + previous window)
 function verifyDeleteToken(prefix, emailId, token) {
-    // Check current and previous 5-minute window (allows for clock skew)
-    const currentToken = generateDeleteToken(prefix, emailId);
-    const window = Math.floor(Date.now() / TOKEN_WINDOW) - 1;
-    const cacheKey = `${prefix}:${emailId}:${window}`;
-    
-    // Generate or get previous token
-    let previousToken;
-    if (tokenCache.has(cacheKey)) {
-        previousToken = tokenCache.get(cacheKey);
-    } else {
-        const data = `${prefix}:${emailId}:${window}`;
-        previousToken = crypto.createHmac('sha256', DELETE_TOKEN_SECRET)
-            .update(data)
-            .digest('hex')
-            .substring(0, 16);
-    }
-    
-    // Constant-time comparison
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(currentToken)) ||
-           crypto.timingSafeEqual(Buffer.from(token), Buffer.from(previousToken));
+    return deleteTokens.verifyDeleteToken(DELETE_TOKEN_SECRET, prefix, emailId, token);
 }
 
 // Security headers middleware with rate limit info
