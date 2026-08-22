@@ -354,6 +354,7 @@ class SpamEater {
         // - ADD_TAGS: ['style'] keeps CSS styling for proper email rendering
         // - Content is displayed in sandboxed iframe for extra security
         return DOMPurify.sanitize(html, {
+            WHOLE_DOCUMENT: true,                   // Keep <head>, where email <style> lives
             ADD_TAGS: ['style'],                    // Keep style tags for email CSS
             FORBID_TAGS: [
                 'script', 'iframe', 'frame', 'frameset',
@@ -513,9 +514,16 @@ class SpamEater {
             }
         }
 
+        // Body attributes (style, bgcolor, text...) survive into the wrapper
+        let bodyAttrs = '';
+        for (const attr of doc.body.attributes) {
+            bodyAttrs += ` ${attr.name}="${attr.value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+        }
+
         return {
             head: doc.head.innerHTML,
             body: doc.body.innerHTML,
+            bodyAttrs,
             blockedImages: state.blockedImages
         };
     }
@@ -554,7 +562,7 @@ class SpamEater {
     </style>
     ${result.head}
 </head>
-<body>${result.body}</body>
+<body${result.bodyAttrs}>${result.body}</body>
 </html>`;
         } else {
             const escapedText = String(emailData.content)
@@ -793,7 +801,7 @@ class SpamEater {
         
         // Show inbox immediately
         this.showInbox(email);
-        this.showToast('Email created successfully! 🍽️', 'success');
+        this.showToast('Inbox ready. Mail shows up within seconds.', 'success');
         
         // Store in sessionStorage for session persistence
         this.storeEmail(email);
@@ -1076,8 +1084,8 @@ class SpamEater {
                     <span class="email-size">${this.formatBytes(email.size || 0)}</span>
                 </div>
             </div>
-            <button class="delete-btn" title="Delete email" data-email-id="${email.id}">
-                <span>🗑️</span>
+            <button class="delete-btn" title="Delete email" data-email-id="${email.id}" aria-label="Delete email">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7 h16"></path><path d="M9 7 V5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 v2"></path><path d="M6 7 l1 13 a1 1 0 0 0 1 1 h8 a1 1 0 0 0 1 -1 l1 -13"></path></svg>
             </button>
         `;
         
