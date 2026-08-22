@@ -230,7 +230,7 @@ curl "https://your-domain.com/?test=<script>alert(1)</script>"
 curl "https://your-domain.com/../../etc/passwd"
 ```
 
-ModSecurity packages are not available on every distribution (AlmaLinux 10 at the time of writing); the installer says so and continues. The application-level protections (CSRF, delete tokens, input validation, sanitization, rate limits) do not depend on it.
+On Enterprise Linux 10, EPEL does not package the nginx connector yet; the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx). Where no package source exists at all, the installer says so and continues — the application-level protections (CSRF, delete tokens, input validation, sanitization, rate limits) do not depend on the WAF.
 
 ## Security notes
 

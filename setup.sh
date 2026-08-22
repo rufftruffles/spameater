@@ -96,7 +96,29 @@ if command -v dnf >/dev/null 2>&1; then
     echo -n "   ├─ Installing: python3-devel sqlite-devel... "
     dnf install -y python3-devel sqlite-devel -q && echo "${S_OK}"
     echo -n "   ├─ Installing: ModSecurity WAF... "
-    dnf install -y nginx-mod-modsecurity libmodsecurity mod_security_crs -q 2>/dev/null && echo "${S_OK}" || echo "${S_WARN} not available"
+    if dnf install -y nginx-mod-modsecurity libmodsecurity mod_security_crs -q 2>/dev/null; then
+        echo "${S_OK}"
+    else
+        # EPEL does not package the nginx connector for every release
+        # (EL10 at the time of writing). Fall back to a COPR that builds
+        # binary RPMs against the distro nginx on Fedora infrastructure.
+        echo -n "trying COPR (mikelo2/modsecurity-el10)... "
+        cat > /etc/yum.repos.d/copr-modsecurity-el10.repo << 'COPREOF'
+[copr-modsecurity-el10]
+name=COPR mikelo2/modsecurity-el10 (ModSecurity for nginx)
+baseurl=https://download.copr.fedorainfracloud.org/results/mikelo2/modsecurity-el10/epel-10-$basearch/
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/mikelo2/modsecurity-el10/pubkey.gpg
+enabled=1
+repo_gpgcheck=0
+COPREOF
+        if dnf install -y nginx-mod-modsecurity libmodsecurity mod_security_crs -q 2>/dev/null; then
+            echo "${S_OK}"
+        else
+            rm -f /etc/yum.repos.d/copr-modsecurity-el10.repo
+            echo "${S_WARN} not available"
+        fi
+    fi
     echo -n "   └─ Enabling firewalld... "
     systemctl enable --now firewalld >/dev/null 2>&1 && echo "${S_OK}"
 elif command -v yum >/dev/null 2>&1; then
@@ -327,7 +349,8 @@ if [ "$IS_SUBDOMAIN" = true ]; then
 fi
 
 # Add ModSecurity if enabled
-if [ "$MODSEC_ENABLED" = true ] && nginx -V 2>&1 | grep -q "modsecurity"; then
+# Dynamic modules never show in `nginx -V`; check for the module file
+if [ "$MODSEC_ENABLED" = true ] && { [ -f /usr/lib64/nginx/modules/ngx_http_modsecurity_module.so ] || [ -f /etc/nginx/modules/ngx_http_modsecurity_module.so ] || nginx -V 2>&1 | grep -q modsecurity; }; then
     sed -i '/location \/ {/i\    # ModSecurity WAF\n    include /opt/spameater/modsecurity/nginx-modsecurity.conf;\n' /tmp/spameater.conf
 fi
 
@@ -412,7 +435,7 @@ if [ "$MODSEC_ENABLED" = true ]; then
     fi
     
     # Add ModSecurity include after server_tokens off line (ONLY IF NOT ALREADY PRESENT)
-    if [ -f "$NGINX_CONFIG" ] && grep -q "server_tokens off;" "$NGINX_CONFIG" ] && ! grep -q "modsecurity" "$NGINX_CONFIG"; then
+    if [ -f "$NGINX_CONFIG" ] && grep -q "server_tokens off;" "$NGINX_CONFIG" && ! grep -q "modsecurity" "$NGINX_CONFIG"; then
         sed -i '/server_tokens off;/a\    \n    # ModSecurity WAF\n    include /opt/spameater/modsecurity/nginx-modsecurity.conf;' "$NGINX_CONFIG"
         
         # Test and reload nginx
