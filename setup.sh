@@ -296,6 +296,12 @@ if [ -f "/etc/nginx/modules/ngx_http_modsecurity_module.so" ] || \
     cp "$ORIGINAL_DIR/deploy/modsecurity-rules.conf" /opt/spameater/modsecurity/spameater-rules.conf
     cp "$ORIGINAL_DIR/deploy/nginx-modsecurity.conf" /opt/spameater/modsecurity/
     
+    # The audit log is written by the nginx worker, not by spameater
+    mkdir -p /opt/spameater/logs
+    touch /opt/spameater/logs/modsec_audit.log
+    chown nginx:nginx /opt/spameater/logs/modsec_audit.log 2>/dev/null || true
+    chmod 640 /opt/spameater/logs/modsec_audit.log
+
     if [ -f "/opt/spameater/modsecurity/unicode.mapping" ] && [ -d "/opt/spameater/modsecurity/crs/rules" ]; then
         MODSEC_ENABLED=true
         echo "${S_OK} ModSecurity configuration complete"
