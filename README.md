@@ -18,15 +18,16 @@ SpamEater runs on your own domain and server. Type a name, get an inbox, use it 
 
 ## What's new in v4
 
-**Email rendering, rebuilt.**
-- HTML mail is adapted to the dark interface color by color: the sender's layout, tables, and buttons stay intact instead of being flattened by forced styles. Mail designed dark passes through untouched. A contrast guard checks the rendered result and lifts any text a sender left unreadable, whatever markup produced it.
-- Forwarded mail displays now. The MIME tree is walked in full, so text nested under `multipart/mixed` (every forward, every attachment-bearing message) is found instead of coming up "No content available".
+### Email rendering, rebuilt
+- HTML mail is adapted to the dark interface color by color, keeping the sender's layout intact. Earlier versions flattened everything with forced styles. Mail designed dark passes through untouched, and a contrast guard checks the rendered result and lifts any text a sender left unreadable, whatever markup produced it.
+- Forwarded mail displays now. The MIME tree is walked in full, so text nested under `multipart/mixed` (every forward, every attachment-bearing message) is found. Those used to come up "No content available".
 - Inline images (signature logos referenced by `cid:`) are embedded at ingestion and render like the sender intended. Remote images stay blocked until you load them for that email, so tracking pixels never fire on open.
 - Links open in a new tab with `noopener` and no referrer. Dark scrollbars, readable dividers, correct rendering at phone widths.
 
-**Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, themed install scripts to match. The browser loads nothing from third-party CDNs. Copy button, random address generator, live self-destruct countdown, styled delete confirmation. Since v4.1 there is a dark/light toggle: it follows the OS preference by default, remembers an explicit choice, and in light mode email renders exactly as the sender designed it.
+### Terminal Ledger interface
+New design across every screen, self-hosted fonts, SVG iconography, themed install scripts to match. The browser loads nothing from third-party CDNs. Copy button, random address generator, live self-destruct countdown, styled delete confirmation. Since v4.1 there is a dark/light toggle: it follows the OS preference by default, remembers an explicit choice, and in light mode email renders exactly as the sender designed it.
 
-**Operations and security.**
+### Operations and security
 - Docker upgrades keep your data: secrets persist on the data volume, so `docker compose pull && up -d` no longer regenerates the encryption key that protects stored mail.
 - Email `<style>` blocks survive ingestion (they were stripped since v1, which is why styled mail looked broken).
 - The 24-hour countdown starts at inbox creation and cannot silently restart on first delivery.
