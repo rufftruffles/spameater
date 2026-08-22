@@ -5,106 +5,97 @@
 ![GitHub issues](https://img.shields.io/github/issues/rufftruffles/spameater)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker/)
-[![Security](https://img.shields.io/badge/Security-Hardened-green.svg)](deploy/)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rufftruffles/spameater/docker-publish.yml)
 
-**Privacy-focused disposable email service with automatic 24-hour deletion.**
+**Self-hosted disposable email. Every inbox deletes itself after 24 hours.**
 
-SpamEater is a self-hosted, open-source disposable email server that prioritizes privacy and security. Perfect for testing, sign-ups, and protecting your real email from spam. All emails are automatically deleted after 24 hours with no recovery option.
+SpamEater runs on your own domain and server. Type a name, get an inbox, use it for signups and testing, and let it burn. No accounts, no tracking, no recovery. Email bodies are encrypted at rest with AES-256-GCM.
 
-## What's New in v3
+## What's new in v4
 
-**Cyber Neon UI** - Complete visual redesign with a modern dark theme featuring vibrant orange and cyan accents, smooth animations, and enhanced visual feedback.
-
-**Mobile-First Design** - Fully responsive interface optimized for all screen sizes, from small phones to large desktop monitors.
+- **Emails render correctly.** HTML mail is adapted to the dark interface color by color: the sender's layout, tables, and buttons stay intact instead of being flattened by forced styles. Mail designed dark passes through untouched.
+- **Tracking pixels are dead.** Remote images are blocked by default and shown as placeholders. One click loads them for that email if you want them.
+- **Terminal Ledger interface.** New design across every screen, self-hosted fonts, SVG iconography, and a layout that works from phones to desktops. The browser now loads nothing from third-party CDNs.
+- **Docker upgrades keep your data.** Secrets persist on the data volume, so `docker compose pull && up -d` no longer regenerates the encryption key that protects stored mail.
+- **A real dependency manifest.** `package.json` with pinned versions and a committed lockfile; CI installs, audits, and tests before publishing an image. First tests in the repo.
+- Copy button, random address generator, and a live self-destruct countdown.
 
 ## Screenshots
 
 <div align="center">
-  <img src="screenshots/1.png" alt="SpamEater Landing Page" width="600">
+  <img src="screenshots/1.png" alt="SpamEater landing page" width="600">
   <br>
-  <em>Create disposable email addresses instantly</em>
+  <em>Pick a name or roll the dice</em>
   <br><br>
-  <img src="screenshots/2.png" alt="SpamEater Inbox View" width="600">
+  <img src="screenshots/2.png" alt="SpamEater inbox" width="600">
   <br>
-  <em>Real-time email reception with clean interface</em>
+  <em>Inbox with live countdown, copy, and switch controls</em>
   <br><br>
-  <img src="screenshots/3.png" alt="SpamEater Email Modal" width="600">
+  <img src="screenshots/3.png" alt="SpamEater email view" width="600">
   <br>
-  <em>View email details with one-click deletion</em>
+  <em>HTML mail adapted to dark, remote images blocked until loaded</em>
 </div>
 
 ## Features
 
-**Privacy First**
-- No tracking, analytics, or external dependencies
-- No user registration required
-- All emails auto-deleted after 24 hours
-- Email body encryption at rest (AES-256-GCM)
-- No content logging
+**Privacy**
+- No user accounts, tracking, or analytics
+- Inboxes and mail deleted after 24 hours, no recovery
+- Email bodies encrypted at rest (AES-256-GCM)
+- Remote images blocked by default; tracking pixels never fire on open
+- The web app serves everything from your own host
 
 **Security**
-- ModSecurity WAF with OWASP Core Rule Set
+- ModSecurity WAF with the OWASP Core Rule Set
 - fail2ban intrusion prevention
-- CSRF and XSS protection
-- Rate limiting per IP and per inbox
-- SQL injection prevention
-- Automatic SSL with Let's Encrypt
-- Security headers (CSP, HSTS, X-Frame-Options)
+- CSRF tokens plus HMAC delete tokens
+- Rate limiting per IP and per inbox at the SMTP, WAF, and API layers
+- HTTPS via Let's Encrypt with automatic renewal; security headers (CSP, HSTS, X-Frame-Options)
 
 **Technical**
-- High-performance Haraka SMTP server
-- Lightweight SQLite database
-- Vanilla JavaScript frontend (no frameworks)
-- Mobile-friendly responsive design
-- Real-time email updates via polling
-- RESTful API
-- Docker support with prebuilt images
+- Haraka SMTP server, Express API, SQLite storage
+- Vanilla JavaScript frontend, no build step
+- Inbox updates by polling every 3 seconds
+- Docker image and native installer
 
-## Quick Start
+## Quick start
 
 ### Prerequisites
 
-1. **Domain Name** - You must own a domain (e.g., `example.com`)
+1. **A domain you own** (e.g. `example.com`)
 
-2. **DNS Configuration** - Configure these records BEFORE installation:
-   
-   **For private/personal use (recommended - better security):**
+2. **DNS records, configured before installation:**
+
+   For private/personal use (recommended, better isolation):
    ```
    MX  example.com       10 mail.example.com
    A   mail.example.com  YOUR_SERVER_IP
    A   app.example.com   YOUR_SERVER_IP    (web interface)
    ```
-   Using a subdomain like `app.example.com` for the web interface provides better security isolation when running a private instance for personal use.
-   
-   **For public use (simpler, but less secure):**
+
+   For public use (simpler):
    ```
    MX  example.com       10 mail.example.com
    A   mail.example.com  YOUR_SERVER_IP
    A   example.com       YOUR_SERVER_IP    (web + email on same domain)
    ```
-   Using the root domain `example.com` for the web interface is simpler for public instances, but provides less security isolation.
 
-3. **Verify DNS** is working before proceeding:
+3. **Verify DNS before proceeding** (propagation can take up to 48 hours; certificate issuance fails without it):
    ```bash
    dig MX example.com
    dig A mail.example.com
    ```
-   DNS propagation can take up to 48 hours. SSL certificate generation will fail without proper DNS.
 
-4. **Server Requirements**:
-   - Ports 25, 80, 443 open and accessible
-   - Static public IP address
+4. **Server**: static public IP, ports 25, 80, and 443 open.
 
 ---
 
 <details>
-<summary><b>Docker Deployment (Recommended)</b></summary>
+<summary><b>Docker deployment (recommended)</b></summary>
 
 ### Requirements
-- Docker Engine 20.10+
-- Docker Compose v2+
-- Any modern Linux distribution (AlmaLinux, Ubuntu, Debian, etc.)
+- Docker Engine 20.10+ and Docker Compose v2+
+- Any modern Linux distribution
 
 ### Installation
 
@@ -112,101 +103,41 @@ SpamEater is a self-hosted, open-source disposable email server that prioritizes
 # Download configuration
 wget https://raw.githubusercontent.com/rufftruffles/spameater/main/docker-compose.yml
 
-# Edit your domain (lines 18 and 45)
+# Edit your domains (hostname, EMAIL_DOMAIN, WEB_DOMAIN)
 nano docker-compose.yml
 
 # Deploy
 docker compose up -d
 ```
 
-**Important Security Recommendation:** For private/personal use, use a subdomain for the web interface (e.g., `app.example.com`) for better security isolation between the email service and web application. For public instances open to everyone, you can use the root domain (`example.com`) for simplicity, though it provides less security isolation.
+Secrets are generated on first start and stored on the data volume, so later upgrades and recreates keep the same encryption key. SSL certificates come from Let's Encrypt automatically.
 
-Edit these lines in `docker-compose.yml`:
-```yaml
-hostname: example.com                    # Email domain
-environment:
-  EMAIL_DOMAIN: example.com              # Emails received at *@example.com
-  WEB_DOMAIN: app.example.com            # Web interface at https://app.example.com
-```
-
-**Access:** Web interface at `https://app.example.com` (or your WEB_DOMAIN)
-
-All security secrets are auto-generated on first run. SSL certificates are obtained automatically from Let's Encrypt.
+**Access:** `https://app.example.com` (your WEB_DOMAIN)
 
 ### Management
 
 ```bash
-# View logs
-docker compose logs -f
+docker compose logs -f                              # logs
+docker compose restart                              # restart services
+docker compose pull && docker compose up -d         # upgrade
+docker exec -it spameater supervisorctl status      # service status
 
-# Restart services
-docker compose restart
-
-# Stop services
-docker compose down
-
-# Update to latest version
-docker compose pull
-docker compose up -d
-
-# Check service status
-docker compose ps
-docker exec -it spameater supervisorctl status
-
-# Backup data
-docker run --rm -v spameater_data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/spameater-backup-$(date +%Y%m%d).tar.gz -C /data .
+# Backup (data volume holds the database, inbox cache, and secrets)
+docker run --rm -v spameater_data:/data -v $(pwd):/backup alpine tar czf /backup/spameater-backup-$(date +%Y%m%d).tar.gz -C /data .
 ```
 
-### Troubleshooting
-
-**Container Won't Start**
-```bash
-docker compose logs spameater
-docker compose config
-netstat -tulpn | grep -E ':(25|80|443)'
-```
-
-**Emails Not Receiving**
-```bash
-# Verify DNS
-dig MX your-domain.com
-dig A mail.your-domain.com
-
-# Check SMTP service
-docker exec -it spameater supervisorctl status haraka
-docker exec -it spameater tail -f /opt/spameater/logs/haraka.log
-
-# Test SMTP port
-telnet your-domain.com 25
-```
-
-**SSL Certificate Failed**
-```bash
-# Manual certificate generation
-docker exec -it spameater certbot --nginx -d your-domain.com
-docker exec -it spameater nginx -s reload
-```
-
-Common causes: DNS not propagated, ports 80/443 blocked, domain doesn't resolve to your IP.
-
-For detailed Docker documentation, see [QUICKSTART.md](QUICKSTART.md) and [docker/README.md](docker/README.md).
+Upgrading from v3: if the old container is still running, restart in place once (`docker compose restart`) before recreating, and the existing key is migrated to the volume. If the container was already recreated, the old key is gone with it — with the 24-hour retention window that costs at most one day of mail.
 
 </details>
 
 ---
 
 <details>
-<summary><b>Native Installation (Advanced)</b></summary>
+<summary><b>Native installation (advanced)</b></summary>
 
-### Supported Operating Systems
+### Supported systems
 - AlmaLinux 9 / RHEL 9 / Rocky Linux 9
 - Ubuntu 22.04+ / Debian 11+
-
-### Requirements
-- Fresh installation recommended
-- Root/sudo access
-- Ports 25, 80, 443 available
 
 ### Installation
 
@@ -216,51 +147,18 @@ cd spameater
 sudo ./setup.sh
 ```
 
-The setup script will:
-1. Install all dependencies (Node.js, Haraka, nginx, etc.)
-2. Configure Haraka SMTP server
-3. Setup nginx with SSL
-4. Configure ModSecurity WAF and fail2ban
-5. Initialize SQLite database
-6. Setup systemd services
-7. Obtain SSL certificates from Let's Encrypt
+The script installs Node.js, Haraka, nginx with ModSecurity, fail2ban, and the SQLite database, sets up systemd services, and obtains certificates.
 
 ### Management
 
 ```bash
-# View logs
+systemctl status haraka spameater-api nginx
 journalctl -u haraka -f
 journalctl -u spameater-api -f
 tail -f /opt/spameater/logs/haraka.log
-tail -f /opt/spameater/logs/api.log
-
-# Service management
-systemctl status haraka
-systemctl status spameater-api
-systemctl status nginx
-systemctl restart haraka
-systemctl restart spameater-api
-systemctl restart nginx
-
-# View ModSecurity logs
-tail -f /opt/spameater/logs/modsec_audit.log
 ```
 
-### Configuration
-
-Edit `/opt/spameater/.env`:
-```bash
-EMAIL_DOMAIN=example.com
-WEB_DOMAIN=app.example.com    # Optional, defaults to EMAIL_DOMAIN
-DELETE_TOKEN_SECRET=<auto-generated>
-CSRF_SECRET=<auto-generated>
-ENCRYPTION_KEY=<auto-generated>
-```
-
-After editing, restart services:
-```bash
-systemctl restart haraka spameater-api nginx
-```
+Configuration lives in `/opt/spameater/.env` (`EMAIL_DOMAIN`, `WEB_DOMAIN`, secrets). Restart services after editing.
 
 ### Uninstall
 
@@ -268,7 +166,7 @@ systemctl restart haraka spameater-api nginx
 sudo ./uninstall.sh
 ```
 
-This removes all services, data, and configurations.
+Removes all services, data, and configuration.
 
 </details>
 
@@ -277,164 +175,62 @@ This removes all services, data, and configurations.
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Internet  │────▶│    Nginx    │────▶│   Express   │
-│             │     │  (SSL/WAF)  │     │     API     │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                                        │
-       ▼                                        ▼
-┌─────────────┐                        ┌─────────────┐
-│   Haraka    │───────────────────────▶│   SQLite    │
-│    SMTP     │                        │   Database  │
-└─────────────┘                        └─────────────┘
+Internet → Nginx (SSL/WAF) → Express API (:3001) → SQLite
+    ↓                                ↓
+Haraka SMTP (:25) ─────────────→ SQLite + JSON inbox cache
 ```
 
-### Components
+- **Haraka** receives mail, encrypts bodies, writes the database and the per-inbox JSON cache
+- **Nginx** terminates TLS, runs ModSecurity, serves the frontend and inbox JSON
+- **Express** handles inbox creation and authenticated deletion
+- **Cleanup cron** enforces the 24-hour TTL and storage quotas hourly
 
-- **Haraka** - High-performance SMTP server for email reception
-- **Nginx** - Web server with ModSecurity WAF and SSL termination
-- **Express** - REST API backend with rate limiting
-- **SQLite** - Lightweight database with encrypted email storage
-- **Vanilla JS** - Zero-dependency frontend for maximum performance
-
-## Testing
-
-### Test Email Reception
+## Development
 
 ```bash
-# Send test email via telnet
+npm ci
+npm test                                        # node:test suite
+
+# Local dev stack (no root, no /opt) — http://127.0.0.1:8080
+mkdir -p .devhome/data/inboxes
+sqlite3 .devhome/data/emails.db < database/schema.sql
+SPAMEATER_HOME=$PWD/.devhome node scripts/seed-inbox.js
+SPAMEATER_HOME=$PWD/.devhome DELETE_TOKEN_SECRET=$(openssl rand -hex 16) CSRF_SECRET=$(openssl rand -hex 16) ENCRYPTION_KEY=$(openssl rand -hex 16) node api-server.js &
+SPAMEATER_HOME=$PWD/.devhome node scripts/dev.js
+```
+
+### Test email reception
+
+```bash
 telnet your-domain.com 25
 HELO test
 MAIL FROM: <test@example.org>
 RCPT TO: <anything@your-domain.com>
 DATA
-Subject: Test Email
-This is a test message.
+Subject: Test
+Test message.
 .
 QUIT
 ```
 
-### Test Security (ModSecurity)
+## Security notes
 
-These requests should return 403 Forbidden:
-
-```bash
-curl "https://your-domain.com/?test=<script>alert(1)</script>"
-curl "https://your-domain.com/../../etc/passwd"
-```
-
-## Security
-
-SpamEater implements defense-in-depth security:
-
-### Application Layer
-- CSRF token protection on all state-changing operations
-- Parameterized queries prevent SQL injection
-- Input validation and sanitization
-- Rate limiting per IP and per inbox
-- Secure random token generation
-- Email body encryption at rest (AES-256-GCM)
-- Path traversal protection
-- XSS prevention
-
-### Infrastructure Layer
-- ModSecurity WAF with OWASP Core Rule Set
-- fail2ban intrusion prevention
-- Security headers (CSP, HSTS, X-Frame-Options, etc.)
-- TLS 1.2+ only with strong cipher suites
-- Automatic SSL certificate renewal
-- Comprehensive audit logging
-- No server version disclosure
-
-### Privacy
-- No user tracking or analytics
-- No external JavaScript dependencies
-- No user registration or accounts
-- No email content logging
-- Automatic 24-hour deletion with no recovery
-- No data retention beyond deletion window
-
-## Troubleshooting
-
-### Container Won't Start
-
-```bash
-# Check logs
-docker compose logs spameater
-
-# Verify configuration
-docker compose config
-
-# Check port availability
-netstat -tulpn | grep -E ':(25|80|443)'
-```
-
-### Emails Not Receiving
-
-1. Verify DNS configuration:
-   ```bash
-   dig MX your-domain.com
-   dig A mail.your-domain.com
-   ```
-
-2. Check SMTP service:
-   ```bash
-   # Docker
-   docker exec -it spameater supervisorctl status haraka
-   docker exec -it spameater tail -f /opt/spameater/logs/haraka.log
-   
-   # Native
-   systemctl status haraka
-   tail -f /opt/spameater/logs/haraka.log
-   ```
-
-3. Test SMTP port:
-   ```bash
-   telnet your-domain.com 25
-   ```
-
-4. Check firewall:
-   ```bash
-   # Docker (host firewall)
-   firewall-cmd --list-all
-   
-   # Native
-   systemctl status firewalld
-   firewall-cmd --list-ports
-   ```
-
-### SSL Certificate Failed
-
-Common causes:
-- DNS not pointing to your server yet
-- DNS hasn't propagated (can take up to 48 hours)
-- Ports 80/443 blocked by firewall
-- Domain doesn't resolve to your IP
-
-**Solution:** Wait for DNS propagation, then manually run certbot (see SSL Certificates section above).
+- Delete operations require a CSRF token and a rotating HMAC delete token, compared in constant time.
+- Anyone who knows an inbox name can read that inbox; that is the design of an accountless service. Use random names (the dice button) for anything you would rather keep to yourself.
+- Inbound SMTP on port 25 is plaintext, as is most server-to-server mail today. The web interface is HTTPS-only.
+- Report vulnerabilities through the GitHub Security tab.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-Copyright (c) 2025 rufftruffles
+MIT — see [LICENSE](LICENSE). Copyright (c) 2025 rufftruffles
 
 ## Acknowledgments
 
-- [Haraka](https://haraka.github.io/) - Excellent SMTP server framework
-- [OWASP CRS](https://coreruleset.org/) - Web application firewall rules
-- [Let's Encrypt](https://letsencrypt.org/) - Free SSL certificates
-
-## Support
-
-- **Issues:** [GitHub Issues](https://github.com/rufftruffles/spameater/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/rufftruffles/spameater/discussions)
-- **Security:** Report security vulnerabilities via GitHub Security tab
+- [Haraka](https://haraka.github.io/) SMTP framework
+- [OWASP CRS](https://coreruleset.org/) WAF rules
+- [DOMPurify](https://github.com/cure53/DOMPurify) HTML sanitizer
+- [Let's Encrypt](https://letsencrypt.org/) certificates
 
 ## Disclaimer
 
-SpamEater is designed for temporary email reception only. Do not use it for important communications. All emails are automatically and permanently deleted after 24 hours with absolutely no recovery option.
-
----
-
-**Made with ❤️ for privacy • All emails auto-delete after 24 hours • No tracking, no storage**
+SpamEater is for throwaway mail. Everything is deleted after 24 hours with no recovery. Do not point anything important at it.
