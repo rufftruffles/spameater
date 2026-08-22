@@ -261,6 +261,8 @@ class SpamEater {
             emailInput.value = '';
             emailInput.focus();
         }
+        const createBtn = document.getElementById('createBtn');
+        if (createBtn) createBtn.disabled = true;
         
         this.currentEmail = null;
         this.lastEmailCount = 0;
