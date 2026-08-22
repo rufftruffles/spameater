@@ -499,43 +499,34 @@ exports.hook_data_post = function(next, connection) {
             }
         }
         
-        // Parse email body - FIXED LOGIC
+        // Parse email body. Forwarded and attachment-bearing mail nests the
+        // text parts (multipart/mixed > multipart/alternative > text/*), so
+        // the whole part tree is walked, first match per type wins.
         let bodyText = '';
         let bodyHtml = '';
-        
-        if (transaction.body) {
-            // First check if the main body has content
-            if (transaction.body.bodytext) {
-                const mainBodyText = transaction.body.bodytext;
-                // Check if it's HTML by looking for HTML tags
-                if (/<html|<!DOCTYPE/i.test(mainBodyText)) {
-                    bodyHtml = mainBodyText;
-                } else {
-                    bodyText = mainBodyText;
-                }
-            }
-            
-            // Then check children for multipart messages
-            if (transaction.body.children && transaction.body.children.length > 0) {
-                for (let i = 0; i < transaction.body.children.length; i++) {
-                    const child = transaction.body.children[i];
-                    if (child.bodytext) {
-                        const ct = child.header.get('content-type') || '';
-                        if (/text\/plain/i.test(ct)) {
-                            // Only set plain text if we don't already have it
-                            if (!bodyText || bodyText.trim() === '') {
-                                bodyText = child.bodytext;
-                            }
-                        } else if (/text\/html/i.test(ct)) {
-                            // Only set HTML if we don't already have it
-                            if (!bodyHtml || bodyHtml.trim() === '') {
-                                bodyHtml = child.bodytext;
-                            }
-                        }
+
+        const collectBodies = (part) => {
+            if (!part) return;
+            const ct = (part.header && part.header.get('content-type')) || '';
+            if (part.bodytext && part.bodytext.trim()) {
+                if (/text\/html/i.test(ct)) {
+                    if (!bodyHtml.trim()) bodyHtml = part.bodytext;
+                } else if (/text\/plain/i.test(ct)) {
+                    if (!bodyText.trim()) bodyText = part.bodytext;
+                } else if (!/multipart\/|message\/|image\/|audio\/|video\/|application\//i.test(ct)) {
+                    // No or unrecognized content type: classify by content
+                    if (/<html|<!DOCTYPE/i.test(part.bodytext)) {
+                        if (!bodyHtml.trim()) bodyHtml = part.bodytext;
+                    } else if (!bodyText.trim()) {
+                        bodyText = part.bodytext;
                     }
                 }
             }
-        }
+            if (part.children && part.children.length > 0) {
+                for (const child of part.children) collectBodies(child);
+            }
+        };
+        collectBodies(transaction.body);
         
         // Fallback to body_lines if nothing found
         if (!bodyText && !bodyHtml) {
