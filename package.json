@@ -1,0 +1,24 @@
+{
+  "name": "spameater",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Privacy-focused disposable email service with automatic 24-hour deletion.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node api-server.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "express-rate-limit": "8.6.2",
+    "helmet": "8.3.0",
+    "isomorphic-dompurify": "3.22.0",
+    "sqlite3": "6.0.1"
+  },
+  "allowScripts": {
+    "sqlite3@6.0.1": true
+  }
+}
