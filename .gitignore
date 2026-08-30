@@ -51,3 +51,7 @@ mockups/
 
 # Internal planning docs
 docs/superpowers/
+
+# Local tooling (never publish)
+.mcp.json
+ai-writing-tells.skill

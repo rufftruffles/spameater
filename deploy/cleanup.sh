@@ -75,6 +75,8 @@ log "Cleaning expired data from database..."
 
 # First, log security events for expired emails
 sqlite3 "$DB_PATH" << 'EOF'
+PRAGMA busy_timeout=5000;
+PRAGMA foreign_keys=ON;
 -- Log expired inboxes to security events before deletion
 INSERT INTO security_events (event_type, event_data, timestamp)
 SELECT 
@@ -88,6 +90,8 @@ EOF
 
 # Now perform the cleanup
 CLEANUP_RESULT=$(sqlite3 "$DB_PATH" << 'EOF'
+PRAGMA busy_timeout=5000;
+PRAGMA foreign_keys=ON;
 BEGIN TRANSACTION;
 
 -- Count before cleanup
@@ -174,7 +178,7 @@ if [[ -d "$DATA_DIR" ]]; then
             fi
 
             # Check if prefix exists in database
-            if ! echo "$valid_prefixes" | grep -q "^$filename$"; then
+            if ! echo "$valid_prefixes" | grep -qxF -- "$filename"; then
                 log "Removing orphaned JSON: $json_file"
                 rm -f "$json_file"
                 ((json_cleaned++)) || true
@@ -219,6 +223,7 @@ if [[ $db_size -gt $MAX_DB_SIZE ]]; then
     
     # Emergency cleanup: Keep only last 1000 emails total
     sqlite3 "$DB_PATH" << 'EOF'
+PRAGMA busy_timeout=5000;
 DELETE FROM emails WHERE id NOT IN (
     SELECT id FROM emails ORDER BY received_at DESC LIMIT 1000
 );
@@ -345,7 +350,7 @@ SELECT 'Emails last hour: ' || COUNT(*) FROM emails WHERE received_at > strftime
 SELECT 'Average email size: ' || ROUND(AVG(size_bytes)/1024.0, 2) || ' KB' FROM emails;
 SELECT 'Total DB size: ' || ROUND(SUM(pgsize)/1024.0/1024.0, 2) || ' MB' FROM dbstat;
 EOF
-)
+) || STATS=""   # dbstat is absent on some sqlite builds; never abort the run over stats
 
 echo "$STATS" | while IFS= read -r line; do
     log "  $line"

@@ -32,9 +32,13 @@ function initDatabase() {
     db = new sqlite3.Database(DB_PATH, (err) => {
         if (err) {
             console.error('[save_email] Database connection error:', err.message);
+            return;
         }
+        // Per-connection: enforce ON DELETE CASCADE and tolerate concurrent writers
+        db.run('PRAGMA foreign_keys = ON');
+        db.run('PRAGMA busy_timeout = 5000');
     });
-    
+
     // Derive encryption key from environment key
     encryptionKey = crypto.scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, 32);
 }
@@ -522,15 +526,21 @@ exports.hook_data_post = function(next, connection) {
     const senderIp = connection.remote.ip;
     
     try {
-        // Extract email data
-        const recipients = transaction.rcpt_to.map(rcpt => addressOf(rcpt));
+        // Extract email data. Recipients are lowercased and de-duplicated:
+        // addresses are case-insensitive for our purposes, and a message may
+        // legally carry the same RCPT TO twice (which would double-save).
+        const recipients = [...new Set(
+            transaction.rcpt_to.map(rcpt => addressOf(rcpt).toLowerCase())
+        )];
         const sender = transaction.mail_from ? addressOf(transaction.mail_from) : 'unknown@unknown.com';
         const messageId = (transaction.header.get('Message-ID') || generateUUID()).trim();
-        // Haraka header.get() keeps the trailing newline; trim it
-        const subject = sanitizeText((transaction.header.get('Subject') || '(No subject)').trim(), 1000);
-        
+        // get_decoded() resolves RFC 2047 encoded-words (=?UTF-8?B?...?=) that
+        // Gmail/Outlook use for any non-ASCII subject or display name; get()
+        // would store the raw encoded string (and keeps a trailing newline).
+        const subject = sanitizeText((transaction.header.get_decoded('Subject') || '(No subject)').trim(), 1000);
+
         // Get sender name from From header
-        const fromHeader = (transaction.header.get('From') || sender).trim();
+        const fromHeader = (transaction.header.get_decoded('From') || sender).trim();
         let senderName = fromHeader;
         const nameMatch = fromHeader.match(/^"?([^"<]+)"?\s*</);
         if (nameMatch) {

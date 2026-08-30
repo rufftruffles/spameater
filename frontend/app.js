@@ -559,6 +559,21 @@ class SpamEater {
             }
         }
 
+        // Strip remote @import rules. Neither the url() blocking above nor
+        // DOMPurify touches the quoted-string form (@import "https://…"), which
+        // otherwise fetches on first render and defeats the tracker block.
+        if (!allowRemoteImages) {
+            const importRe = /@import\s+(?:url\(\s*)?['"]?(?:https?:)?\/\/[^;]*;?/gi;
+            for (const styleEl of doc.querySelectorAll('style')) {
+                const before = styleEl.textContent;
+                const after = before.replace(importRe, '');
+                if (after !== before) {
+                    state.blockedImages++;
+                    styleEl.textContent = after;
+                }
+            }
+        }
+
         // Links open in a new tab: the sandbox rightly refuses in-frame
         // navigation, and noopener/noreferrer keeps the new tab detached
         for (const a of doc.querySelectorAll('a[href]')) {
@@ -1576,6 +1591,24 @@ class SpamEater {
         }
     }
     
+    // Fetch a fresh delete token, refreshing the CSRF token once on 403.
+    // Returns the token string or null.
+    async fetchDeleteToken(prefix, emailId) {
+        const request = () => fetch('/api/token/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfToken },
+            body: JSON.stringify({ prefix, emailId })
+        });
+        let response = await request();
+        if (response.status === 403) {
+            await this.getCSRFToken();
+            response = await request();
+        }
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.token;
+    }
+
     // Delete email function with token authentication
     async deleteEmail(emailId, fromModal = false) {
         if (!this.currentEmail) return;
@@ -1647,87 +1680,59 @@ class SpamEater {
             });
             
             if (deleteResponse.ok) {
-                // Successfully deleted on server
                 const result = await deleteResponse.json();
-                
-                // Remove token from cache
-                this.deleteTokens.delete(emailId);
-                
-                // Update the display immediately
-                const emailList = document.getElementById('emailList');
-                if (emailList) {
-                    const emailElement = emailList.querySelector(`[data-email-id="${emailId}"]`);
-                    if (emailElement) {
-                        emailElement.style.animation = 'fadeOut 0.3s ease-out';
-                        setTimeout(() => {
-                            emailElement.remove();
-                            
-                            // Check if inbox is now empty
-                            const remainingEmails = emailList.querySelectorAll('.email-item');
-                            if (remainingEmails.length === 0) {
-                                const emptyState = document.getElementById('emptyState');
-                                if (emptyState) emptyState.style.display = 'block';
-                                this.updateStatus('Active - Waiting for emails...');
-                            }
-                        }, 300);
-                    }
-                }
-                
-                // Update count
-                this.updateEmailCount(result.remaining || 0);
-                
-                // Show success message
-                this.showToast('Email deleted permanently', 'success');
-                
+                this.onEmailDeleted(emailId, result);
             } else if (deleteResponse.status === 403) {
-                // CSRF token expired during delete
-                await this.getCSRFToken();
-                // Retry delete with new CSRF token
+                // 403 is ambiguous (CSRF or delete token). The cached delete
+                // token expires after 5-10 min while the page stays open, so
+                // refresh BOTH: drop the stale token, fetch a new one (which
+                // also refreshes CSRF on its own 403), and retry once.
+                this.deleteTokens.delete(emailId);
+                const freshToken = await this.fetchDeleteToken(prefix, emailId);
+                if (!freshToken) throw new Error('Failed to delete email');
+                this.deleteTokens.set(emailId, freshToken);
                 const retryDeleteResponse = await fetch(`/api/delete/${prefix}/${emailId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Delete-Token': token,
+                        'X-Delete-Token': freshToken,
                         'X-CSRF-Token': this.csrfToken
                     }
                 });
-                
-                if (retryDeleteResponse.ok) {
-                    // Handle successful delete (same as above)
-                    const result = await retryDeleteResponse.json();
-                    this.deleteTokens.delete(emailId);
-                    
-                    const emailList = document.getElementById('emailList');
-                    if (emailList) {
-                        const emailElement = emailList.querySelector(`[data-email-id="${emailId}"]`);
-                        if (emailElement) {
-                            emailElement.style.animation = 'fadeOut 0.3s ease-out';
-                            setTimeout(() => {
-                                emailElement.remove();
-                                const remainingEmails = emailList.querySelectorAll('.email-item');
-                                if (remainingEmails.length === 0) {
-                                    const emptyState = document.getElementById('emptyState');
-                                    if (emptyState) emptyState.style.display = 'block';
-                                    this.updateStatus('Active - Waiting for emails...');
-                                }
-                            }, 300);
-                        }
-                    }
-                    
-                    this.updateEmailCount(result.remaining || 0);
-                    this.showToast('Email deleted permanently', 'success');
-                } else {
-                    throw new Error('Failed to delete email');
-                }
+                if (!retryDeleteResponse.ok) throw new Error('Failed to delete email');
+                const result = await retryDeleteResponse.json();
+                this.onEmailDeleted(emailId, result);
             } else {
                 throw new Error('Failed to delete email');
             }
         } catch (error) {
             this.showToast('Failed to delete email', 'error');
-            
             // Reload emails to sync with server
             this.loadEmails();
         }
+    }
+
+    // Shared post-delete UI update
+    onEmailDeleted(emailId, result) {
+        this.deleteTokens.delete(emailId);
+        const emailList = document.getElementById('emailList');
+        if (emailList) {
+            const emailElement = emailList.querySelector(`[data-email-id="${emailId}"]`);
+            if (emailElement) {
+                emailElement.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    emailElement.remove();
+                    const remainingEmails = emailList.querySelectorAll('.email-item');
+                    if (remainingEmails.length === 0) {
+                        const emptyState = document.getElementById('emptyState');
+                        if (emptyState) emptyState.style.display = 'block';
+                        this.updateStatus('Active - Waiting for emails...');
+                    }
+                }, 300);
+            }
+        }
+        this.updateEmailCount(result.remaining || 0);
+        this.showToast('Email deleted permanently', 'success');
     }
 }
 

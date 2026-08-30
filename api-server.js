@@ -45,8 +45,17 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
     process.exit(1);
 }
 
-// Initialize database connection
-const db = new sqlite3.Database(DB_PATH);
+// Initialize database connection. Without an open callback, node-sqlite3
+// raises the failure as an uncaught 'error' event and the process exits.
+const db = new sqlite3.Database(DB_PATH, (err) => {
+    if (err) {
+        console.error('[FATAL] Cannot open database at', DB_PATH, '-', err.message);
+        process.exit(1);
+    }
+    // foreign_keys and busy_timeout are per-connection and default off/0
+    db.run('PRAGMA foreign_keys = ON');
+    db.run('PRAGMA busy_timeout = 5000');
+});
 
 // CSRF token store with expiration
 const csrfTokens = new Map();
@@ -206,14 +215,24 @@ app.use((req, res, next) => {
     res.header('Pragma', 'no-cache');
     res.header('Expires', '0');
     
-    // CORS - restrict to same origin in production
+    // CORS - restrict to same origin in production. Exact-origin checks only:
+    // a prefix test would match localhost.evil.com and similar look-alikes.
     const origin = req.headers.origin;
-    if (origin && (origin.startsWith('http://localhost') || origin.startsWith('https://localhost'))) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else {
-        // In production, only allow same origin
-        res.header('Access-Control-Allow-Origin', req.headers.host ? `https://${req.headers.host}` : '');
+    let allowedOrigin = req.headers.host ? `https://${req.headers.host}` : '';
+    if (origin) {
+        let host = null;
+        try {
+            host = new URL(origin).hostname;
+        } catch (err) {
+            host = null;
+        }
+        if (host === 'localhost' || host === '127.0.0.1') {
+            allowedOrigin = origin; // dev only, exact host match
+        } else if (origin === `https://${req.headers.host}`) {
+            allowedOrigin = origin; // same origin in production
+        }
     }
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     
     res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, X-Delete-Token, X-CSRF-Token');
@@ -311,21 +330,24 @@ app.delete('/api/delete/:prefix/:emailId', generalLimiter, async (req, res) => {
         // Update metadata
         inboxData.count = inboxData.emails.length;
         inboxData.updated = Math.floor(Date.now() / 1000);
-        
-        // Write back to file
-        await fs.writeFile(normalizedPath, JSON.stringify(inboxData, null, 2));
-        
-        // Also delete from database
-        db.run('DELETE FROM emails WHERE id = ?', [emailId], (err) => {
-            if (err) {
-                console.error('[API] Failed to delete from database:', err.message);
-            }
+
+        // Delete from the DB first and wait for it: if the row survived, the
+        // next delivery would rewrite the JSON from the DB and resurrect the
+        // "deleted" email. Only rewrite the cache once the row is gone.
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM emails WHERE id = ?', [emailId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
         });
-        
-        res.json({ 
-            success: true, 
+
+        // Write the cache back to reflect the deletion
+        await fs.writeFile(normalizedPath, JSON.stringify(inboxData, null, 2));
+
+        res.json({
+            success: true,
             message: 'Email deleted successfully',
-            remaining: inboxData.count 
+            remaining: inboxData.count
         });
         
     } catch (err) {
@@ -431,15 +453,18 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
     // Normalize email to prevent homograph attacks
     const normalizedEmail = email.normalize('NFC').toLowerCase();
     if (normalizedEmail !== email.toLowerCase()) {
-        await logSecurityEvent('suspicious_pattern', { 
+        await logSecurityEvent('suspicious_pattern', {
             reason: 'unicode_normalization_mismatch',
             email: email.substring(0, 20),
             ip: userIp
         });
         return res.status(400).json({ error: 'Invalid email address' });
     }
-    
-    const prefix = email.split('@')[0];
+
+    // Store lowercase so a differently-cased delivery lands in the same inbox
+    // (email_address is UNIQUE with BINARY collation; the SMTP path lowercases too)
+    const emailLc = normalizedEmail;
+    const prefix = emailLc.split('@')[0];
     const jsonPath = path.join(DATA_DIR, `${prefix}.json`);
     
     try {
@@ -470,7 +495,7 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
         db.run(
             `INSERT OR IGNORE INTO inboxes (id, email_address, prefix, created_at, expires_at)
              VALUES (?, ?, ?, strftime('%s','now'), strftime('%s','now','+24 hours'))`,
-            [crypto.randomUUID(), email, prefix],
+            [crypto.randomUUID(), emailLc, prefix],
             (err) => {
                 if (err) console.error('[API] Failed to create inbox row:', err.message);
             }
@@ -478,7 +503,7 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
 
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         const emptyInbox = {
-            email: email,
+            email: emailLc,
             count: 0,
             updated: Math.floor(Date.now() / 1000),
             expires_at: expiresAt,
@@ -490,7 +515,7 @@ app.post('/api/inbox/create', strictLimiter, async (req, res) => {
         res.json({
             success: true,
             message: 'Inbox created successfully',
-            email: email,
+            email: emailLc,
             expires_at: expiresAt
         });
         

@@ -22,44 +22,38 @@ services:
     container_name: spameater
     
     # ============ EDIT THIS ============
-    # Replace with your actual domain
-    hostname: example.com
+    # Set your domains here or in a .env file beside this compose file
+    # (EMAIL_DOMAIN=..., WEB_DOMAIN=...). The migrate-to-docker script
+    # writes that .env for you.
+    hostname: ${EMAIL_DOMAIN:-example.com}
     # ===================================
-    
+
     privileged: true  # Required for fail2ban
-    
+
     ports:
       - "25:25"      # SMTP
       - "80:80"      # HTTP
       - "443:443"    # HTTPS
-    
+
     volumes:
       - spameater_data:/opt/spameater/data
-      - spameater_logs:/opt/spameater/logs  
+      - spameater_logs:/opt/spameater/logs
       - letsencrypt_certs:/etc/letsencrypt
-    
+
     environment:
-      # ============ REQUIRED - EDIT THIS ============
-      # Your email domain (e.g., example.com)
-      # Emails will be received at: anything@example.com
-      EMAIL_DOMAIN: example.com
-      
-      # ============ OPTIONAL ============
-      # Web interface domain (leave empty to use EMAIL_DOMAIN)
-      # Uncomment to use a different domain for the web interface:
-      WEB_DOMAIN: app.example.com
-      
-      # Admin email for Let's Encrypt notifications
-      # Leave empty for auto: admin@example.com
-      ADMIN_EMAIL: ""
+      # Values come from the shell / a .env file; defaults keep the
+      # first-run example working when nothing is set.
+      EMAIL_DOMAIN: ${EMAIL_DOMAIN:-example.com}
+      WEB_DOMAIN: ${WEB_DOMAIN:-app.example.com}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       
       # ============ SECRETS ============
       # Generated on first start and persisted on the data volume, so
       # upgrades and recreates keep the same encryption key.
-      # To supply your own instead, set them here (32+ characters each):
-      # DELETE_TOKEN_SECRET: ""
-      # CSRF_SECRET: ""
-      # ENCRYPTION_KEY: ""
+      # To supply your own instead, set them in the shell / .env:
+      DELETE_TOKEN_SECRET: ${DELETE_TOKEN_SECRET:-}
+      CSRF_SECRET: ${CSRF_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
 
 
       # ============ ADVANCED ============

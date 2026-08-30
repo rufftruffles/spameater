@@ -102,9 +102,11 @@ else
     fi
 fi
 
-# Replace placeholders in nginx config
-sed -i "s/DOMAIN_PLACEHOLDER/$WEB_DOMAIN/g" /etc/nginx/conf.d/spameater.conf
+# Replace placeholders in nginx config. ORDER MATTERS: DOMAIN_PLACEHOLDER is a
+# substring of EMAIL_DOMAIN_PLACEHOLDER, so the email one must go first or it
+# corrupts the /api/domain return value.
 sed -i "s/EMAIL_DOMAIN_PLACEHOLDER/$EMAIL_DOMAIN/g" /etc/nginx/conf.d/spameater.conf
+sed -i "s/DOMAIN_PLACEHOLDER/$WEB_DOMAIN/g" /etc/nginx/conf.d/spameater.conf
 
 # Process frontend template
 sed -i "s/EMAIL_DOMAIN_PLACEHOLDER/$EMAIL_DOMAIN/g" /opt/spameater/frontend/index.html
@@ -263,7 +265,8 @@ chmod 600 /opt/spameater/data/emails.db 2>/dev/null || true
 
 # Setup cron for certificate renewal
 if [ "$DISABLE_SSL" != "true" ] && [ -d "/etc/letsencrypt/live/$WEB_DOMAIN" ]; then
-    echo "0 12 * * * /usr/bin/certbot renew --quiet --post-hook 'nginx -s reload'" > /etc/cron.d/certbot-renew
+    # /etc/cron.d lines require a user field (m h dom mon dow USER command)
+    echo "0 12 * * * root /usr/bin/certbot renew --quiet --post-hook 'nginx -s reload'" > /etc/cron.d/certbot-renew
     chmod 644 /etc/cron.d/certbot-renew
 fi
 
