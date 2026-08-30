@@ -2,7 +2,7 @@
 
 ## 4.1.1 - 2026-08-30
 
-Hardening and correctness pass from an external code review.
+Security and correctness hardening.
 
 - CORS allow-origin uses exact-host checks (`lib/cors.js`); a prefix match had let `localhost.evil.com` through.
 - Non-ASCII subjects and sender names are decoded (`get_decoded`, RFC 2047) instead of stored as `=?UTF-8?B?…?=`.
