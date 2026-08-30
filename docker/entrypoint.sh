@@ -34,6 +34,18 @@ if [ -z "$ENCRYPTION_KEY" ] && [ ! -f "$PERSISTED_ENV" ] && [ -f "$LEGACY_ENV" ]
     echo "🔐 Migrated existing secrets to the data volume"
 fi
 
+# A too-short env-supplied secret (e.g. a stray .env placeholder) must never
+# overwrite a good persisted key: the app requires 32+ chars, and persisting
+# a short one would make already-stored mail undecryptable. Drop them here so
+# the persisted/generated value is used instead.
+for var in DELETE_TOKEN_SECRET CSRF_SECRET ENCRYPTION_KEY; do
+    eval "val=\$$var"
+    if [ -n "$val" ] && [ "${#val}" -lt 32 ]; then
+        echo "⚠️  Ignoring $var from environment: shorter than 32 characters"
+        eval "$var=''"
+    fi
+done
+
 # Parse, never source: the file lives on a writable volume and this
 # entrypoint runs as root, so executing it as shell code is off the table.
 # Explicitly-set environment variables win over persisted values.

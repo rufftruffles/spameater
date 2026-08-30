@@ -559,14 +559,16 @@ class SpamEater {
             }
         }
 
-        // Strip remote @import rules. Neither the url() blocking above nor
-        // DOMPurify touches the quoted-string form (@import "https://…"), which
-        // otherwise fetches on first render and defeats the tracker block.
+        // Strip every @import rule from email styles. The iframe CSP already
+        // blocks external fetches, but a sandboxed srcdoc has no sibling
+        // stylesheet to legitimately import, so removing all @import (any form:
+        // quoted, url(), spaced, comment-separated) closes the tracker channel
+        // without trying to out-parse the CSS tokenizer.
         if (!allowRemoteImages) {
-            const importRe = /@import\s+(?:url\(\s*)?['"]?(?:https?:)?\/\/[^;]*;?/gi;
+            const importRe = /@import[^;]*;?/gi;
             for (const styleEl of doc.querySelectorAll('style')) {
                 const before = styleEl.textContent;
-                const after = before.replace(importRe, '');
+                const after = before.replace(/\/\*[\s\S]*?\*\//g, '').replace(importRe, '');
                 if (after !== before) {
                     state.blockedImages++;
                     styleEl.textContent = after;
@@ -644,6 +646,12 @@ class SpamEater {
         let content;
         let blockedImages = 0;
 
+        // CSP inside the email iframe: no scripts, styles inline-only (blocks
+        // @import in every form, regex or not), fonts/media local-only, images
+        // gated on the load-images choice. Belt to the transform's suspenders.
+        const imgSrc = allowRemoteImages ? 'data: https: http:' : 'data:';
+        const emailCsp = `default-src 'none'; img-src ${imgSrc}; style-src 'unsafe-inline'; font-src data:; media-src data:;`;
+
         if (emailData.isHtml) {
             const result = this.transformEmailDocument(emailData.content, { allowRemoteImages });
             blockedImages = result.blockedImages;
@@ -651,6 +659,7 @@ class SpamEater {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="${emailCsp}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <base target="_blank">
@@ -686,6 +695,7 @@ class SpamEater {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="${emailCsp}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root { color-scheme: ${frame.scheme}; }

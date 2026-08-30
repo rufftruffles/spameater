@@ -49,11 +49,13 @@ services:
       
       # ============ SECRETS ============
       # Generated on first start and persisted on the data volume, so
-      # upgrades and recreates keep the same encryption key.
-      # To supply your own instead, set them in the shell / .env:
-      DELETE_TOKEN_SECRET: ${DELETE_TOKEN_SECRET:-}
-      CSRF_SECRET: ${CSRF_SECRET:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # upgrades and recreates keep the same encryption key. Do NOT wire these
+      # to a .env file: a short/placeholder value would overwrite the good
+      # persisted key and make stored mail undecryptable. To supply your own,
+      # uncomment and set a real 32+ char value here directly:
+      # DELETE_TOKEN_SECRET: "your-32-char-secret"
+      # CSRF_SECRET: "your-32-char-secret"
+      # ENCRYPTION_KEY: "your-32-char-secret"
 
 
       # ============ ADVANCED ============

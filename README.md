@@ -176,7 +176,7 @@ journalctl -u spameater-api -f
 tail -f /opt/spameater/logs/haraka.log
 ```
 
-Secrets live in `/opt/spameater/.env`. The email and web domains are baked into the Haraka config, nginx config, and `index.html` at install time (not read from `.env` on native), so change them by re-running `setup.sh`. Restart services after editing secrets.
+Secrets live in `/opt/spameater/.env` (generated once; `setup.sh` preserves them if you re-run it). The email and web domains are baked into the Haraka config, nginx config, and `index.html` at install time, not read from `.env` on native. Re-running `setup.sh` re-applies the domains without rotating secrets; restart services after any change.
 
 ### Uninstall
 

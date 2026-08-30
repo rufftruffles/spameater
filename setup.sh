@@ -62,14 +62,22 @@ if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
     exit 1
 fi
 
-# Generate credentials
+# Generate credentials. Preserve existing secrets on re-run so re-applying
+# a domain change never rotates the encryption key (which would orphan any
+# still-live encrypted mail).
 ADMIN_EMAIL="admin@$EMAIL_DOMAIN"
+EXISTING_ENV="/opt/spameater/.env"
+if [ -f "$EXISTING_ENV" ]; then
+    DELETE_TOKEN_SECRET=$(grep '^DELETE_TOKEN_SECRET=' "$EXISTING_ENV" | cut -d= -f2-)
+    CSRF_SECRET=$(grep '^CSRF_SECRET=' "$EXISTING_ENV" | cut -d= -f2-)
+    ENCRYPTION_KEY=$(grep '^ENCRYPTION_KEY=' "$EXISTING_ENV" | cut -d= -f2-)
+fi
 # openssl rand -hex 16 always yields exactly 32 chars of full entropy
-DELETE_TOKEN_SECRET=$(openssl rand -hex 16)
-CSRF_SECRET=$(openssl rand -hex 16)
-ENCRYPTION_KEY=$(openssl rand -hex 16)
+[ ${#DELETE_TOKEN_SECRET} -ge 32 ] || DELETE_TOKEN_SECRET=$(openssl rand -hex 16)
+[ ${#CSRF_SECRET} -ge 32 ] || CSRF_SECRET=$(openssl rand -hex 16)
+[ ${#ENCRYPTION_KEY} -ge 32 ] || ENCRYPTION_KEY=$(openssl rand -hex 16)
 
-echo -e "\n${S_OK} Generated credentials and secrets"
+echo -e "\n${S_OK} Credentials ready (existing secrets preserved on re-run)"
 
 # Create dedicated user
 echo "${S_ARROW} Creating spameater user..."
