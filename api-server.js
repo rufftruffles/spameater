@@ -11,6 +11,7 @@ const path = require('path');
 const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
 const deleteTokens = require('./lib/delete-token.js');
+const { allowedOrigin } = require('./lib/cors.js');
 
 const app = express();
 
@@ -215,24 +216,8 @@ app.use((req, res, next) => {
     res.header('Pragma', 'no-cache');
     res.header('Expires', '0');
     
-    // CORS - restrict to same origin in production. Exact-origin checks only:
-    // a prefix test would match localhost.evil.com and similar look-alikes.
-    const origin = req.headers.origin;
-    let allowedOrigin = req.headers.host ? `https://${req.headers.host}` : '';
-    if (origin) {
-        let host = null;
-        try {
-            host = new URL(origin).hostname;
-        } catch (err) {
-            host = null;
-        }
-        if (host === 'localhost' || host === '127.0.0.1') {
-            allowedOrigin = origin; // dev only, exact host match
-        } else if (origin === `https://${req.headers.host}`) {
-            allowedOrigin = origin; // same origin in production
-        }
-    }
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
+    // CORS - restrict to same origin in production (see lib/cors.js)
+    res.header('Access-Control-Allow-Origin', allowedOrigin(req.headers.origin, req.headers.host));
     
     res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, X-Delete-Token, X-CSRF-Token');

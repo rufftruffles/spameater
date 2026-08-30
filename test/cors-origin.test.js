@@ -1,28 +1,11 @@
 'use strict';
 
-// Locks the CORS allow-origin decision (SEC-1). Mirrors the logic in
-// api-server.js so a regression to a prefix match fails here.
+// Locks the CORS allow-origin decision (SEC-1) against the real code in
+// lib/cors.js, so a regression to a prefix match fails here.
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-
-function allowedOrigin(origin, host) {
-    let allowed = host ? `https://${host}` : '';
-    if (origin) {
-        let h = null;
-        try {
-            h = new URL(origin).hostname;
-        } catch (err) {
-            h = null;
-        }
-        if (h === 'localhost' || h === '127.0.0.1') {
-            allowed = origin;
-        } else if (origin === `https://${host}`) {
-            allowed = origin;
-        }
-    }
-    return allowed;
-}
+const { allowedOrigin } = require('../lib/cors.js');
 
 test('same-origin is echoed', () => {
     assert.equal(allowedOrigin('https://mail.example.com', 'mail.example.com'), 'https://mail.example.com');
@@ -51,4 +34,9 @@ test('unrelated origin falls back to same-origin', () => {
 
 test('garbage origin does not throw', () => {
     assert.equal(allowedOrigin('not a url', 'mail.example.com'), 'https://mail.example.com');
+});
+
+test('no origin header returns same-origin', () => {
+    assert.equal(allowedOrigin(undefined, 'mail.example.com'), 'https://mail.example.com');
+    assert.equal(allowedOrigin('', ''), '');
 });

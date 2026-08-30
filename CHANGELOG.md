@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.1.1 — 2026-08-30
+
+Hardening and correctness pass from an external code review.
+
+- CORS allow-origin uses exact-host checks (`lib/cors.js`); a prefix match had let `localhost.evil.com` through.
+- Non-ASCII subjects and sender names are decoded (`get_decoded`, RFC 2047) instead of stored as `=?UTF-8?B?…?=`.
+- Email deletion awaits the database delete before rewriting the cache, so a deleted message cannot reappear on the next delivery; the API connection sets `foreign_keys` and `busy_timeout`, and fails fast if the database cannot open.
+- A delete that returns 403 after the token has expired now refreshes the delete token, not just the CSRF token.
+- Inbox identity is stored lowercase on both the API and SMTP paths, and duplicate recipients are collapsed, so a differently-cased delivery lands in the same inbox and is not double-saved.
+- The email view carries its own Content-Security-Policy and strips all `@import` rules, closing a CSS `@import` tracking channel that survived the image block.
+- Docker: fixed the nginx placeholder substitution order (was corrupting `/api/domain`), gave the certbot renewal cron its required user field, and stopped wiring secrets to `.env` (a placeholder there could overwrite the persisted key); domains now interpolate so the migrate script's `.env` is honored.
+- `setup.sh` preserves existing secrets on re-run; `cleanup.sh` uses a fixed-string filename match, sets a SQLite busy timeout, and tolerates a missing `dbstat` table.
+
 ## 4.1.0 — 2026-08-22
 
 - Dark/light theme toggle. Defaults to the OS preference, remembers an explicit choice, and applies before first paint (no flash; the init script is a separate file because the CSP forbids inline scripts).
