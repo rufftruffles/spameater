@@ -559,16 +559,17 @@ class SpamEater {
             }
         }
 
-        // Strip every @import rule from email styles. The iframe CSP already
-        // blocks external fetches, but a sandboxed srcdoc has no sibling
-        // stylesheet to legitimately import, so removing all @import (any form:
-        // quoted, url(), spaced, comment-separated) closes the tracker channel
-        // without trying to out-parse the CSS tokenizer.
+        // Strip remote @import rules (belt to the iframe CSP's suspenders).
+        // Only match an @import that references a remote URL: the url()/quoted
+        // form leading to a scheme or // . Tolerate the space the detached
+        // CSSOM inserts after the colon (url("https: //…")). This deliberately
+        // does NOT match @import appearing inside a content: string, and does
+        // NOT strip comments (which would falsely bump the blocked count).
         if (!allowRemoteImages) {
-            const importRe = /@import[^;]*;?/gi;
+            const importRe = /@import\s*(?:url\(\s*)?['"]?\s*(?:https?:\s*)?\/\/[^;]*;?/gi;
             for (const styleEl of doc.querySelectorAll('style')) {
                 const before = styleEl.textContent;
-                const after = before.replace(/\/\*[\s\S]*?\*\//g, '').replace(importRe, '');
+                const after = before.replace(importRe, '');
                 if (after !== before) {
                     state.blockedImages++;
                     styleEl.textContent = after;

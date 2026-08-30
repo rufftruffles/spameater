@@ -39,10 +39,12 @@ fi
 # a short one would make already-stored mail undecryptable. Drop them here so
 # the persisted/generated value is used instead.
 for var in DELETE_TOKEN_SECRET CSRF_SECRET ENCRYPTION_KEY; do
-    eval "val=\$$var"
+    # Indirect expansion + printf -v: no eval, so a value containing spaces or
+    # shell metacharacters is never re-parsed or executed.
+    val="${!var}"
     if [ -n "$val" ] && [ "${#val}" -lt 32 ]; then
         echo "⚠️  Ignoring $var from environment: shorter than 32 characters"
-        eval "$var=''"
+        printf -v "$var" '%s' ''
     fi
 done
 
