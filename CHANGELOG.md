@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.1.1 — 2026-08-30
+## 4.1.1 - 2026-08-30
 
 Hardening and correctness pass from an external code review.
 
@@ -13,14 +13,14 @@ Hardening and correctness pass from an external code review.
 - Docker: fixed the nginx placeholder substitution order (was corrupting `/api/domain`), gave the certbot renewal cron its required user field, and stopped wiring secrets to `.env` (a placeholder there could overwrite the persisted key); domains now interpolate so the migrate script's `.env` is honored.
 - `setup.sh` preserves existing secrets on re-run; `cleanup.sh` uses a fixed-string filename match, sets a SQLite busy timeout, and tolerates a missing `dbstat` table.
 
-## 4.1.0 — 2026-08-22
+## 4.1.0 - 2026-08-22
 
 - Dark/light theme toggle. Defaults to the OS preference, remembers an explicit choice, and applies before first paint (no flash; the init script is a separate file because the CSP forbids inline scripts).
 - Light "Terminal Ledger" palette: paper tones, the accent darkened to olive for contrast, every component themed through the existing tokens.
 - The email viewer adapts per theme: in light mode mail renders exactly as the sender designed it (no color remap); in dark mode the v4 adaptation applies. The contrast guard, image placeholder, and frame styles follow the active theme, and an open email re-renders on toggle.
 - Error pages follow the OS preference.
 
-## 4.0.1 — 2026-08-22
+## 4.0.1 - 2026-08-22
 
 - ModSecurity works on Enterprise Linux 10: when EPEL has no nginx connector, the installer falls back to binary RPMs from the `mikelo2/modsecurity-el10` COPR (built on Fedora infrastructure against the distro nginx).
 - Fixed the WAF enable gates: dynamic modules never appear in `nginx -V` (the check now looks for the module file), and a malformed bracket skipped the post-SSL include step.
@@ -30,7 +30,7 @@ Hardening and correctness pass from an external code review.
 - The Haraka-directory npm install carries the same dependency overrides as the repo manifest, clearing its audit warnings.
 - Delivery works on Haraka 3.3 (address API change; fresh installs pin 3.3.3).
 
-## 4.0.0 — 2026-08-22
+## 4.0.0 - 2026-08-22
 
 ### Email ingestion
 - Forwarded and attachment-bearing mail extracts correctly: the full MIME tree is walked instead of one level of children (was "No content available" for every forward).
